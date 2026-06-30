@@ -1,0 +1,28 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+
+const authRoutes = require('./routes/auth');
+const membrosRoutes = require('./routes/membros');
+const eventosRoutes = require('./routes/eventos');
+const oracaoRoutes = require('./routes/oracao');
+const dashboardRoutes = require('./routes/dashboard');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', servico: 'Noah Connect API' });
+});
+
+app.use('/api/auth', authRoutes);
+app.use('/api/membros', membrosRoutes);
+app.use('/api/eventos', eventosRoutes);
+app.use('/api/oracao', oracaoRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`🚀 Noah Connect API rodando na porta ${PORT}`);
+});
