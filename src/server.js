@@ -1,12 +1,12 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-
 const authRoutes = require('./routes/auth');
 const membrosRoutes = require('./routes/membros');
 const eventosRoutes = require('./routes/eventos');
 const oracaoRoutes = require('./routes/oracao');
 const dashboardRoutes = require('./routes/dashboard');
+const cultosRoutes = require('./routes/cultos');
 
 const app = express();
 app.use(cors());
@@ -21,6 +21,7 @@ app.use('/api/membros', membrosRoutes);
 app.use('/api/eventos', eventosRoutes);
 app.use('/api/oracao', oracaoRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/cultos', cultosRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
