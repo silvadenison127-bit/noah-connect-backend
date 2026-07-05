@@ -63,6 +63,26 @@ router.get('/perfil', autenticar, async (req, res) => {
   }
 });
 
+// Atualizar próprio perfil (foto, telefone)
+router.put('/perfil', autenticar, async (req, res) => {
+  const { foto_url, telefone } = req.body;
+  try {
+    const resultado = await pool.query(
+      `UPDATE usuarios SET
+        foto_url = COALESCE($1, foto_url),
+        telefone = COALESCE($2, telefone),
+        atualizado_em = NOW()
+       WHERE id = $3
+       RETURNING id, nome, email, telefone, tipo, foto_url`,
+      [foto_url, telefone, req.usuario.id]
+    );
+    res.json(resultado.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao atualizar perfil' });
+  }
+});
+
 // Atualizar membro (admin)
 router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
   const { id } = req.params;
