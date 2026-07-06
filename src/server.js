@@ -11,10 +11,11 @@ const celulasRoutes = require('./routes/celulas');
 const dizimosRoutes = require('./routes/dizimos');
 const financeiroRoutes = require('./routes/financeiro');
 const ministeriosRoutes = require('./routes/ministerios');
+const noticiasRoutes = require('./routes/noticias');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 app.get('/', (req, res) => {
   res.json({ status: 'ok', servico: 'Noah Connect API' });
@@ -30,6 +31,7 @@ app.use('/api/celulas', celulasRoutes);
 app.use('/api/dizimos', dizimosRoutes);
 app.use('/api/financeiro', financeiroRoutes);
 app.use('/api/ministerios', ministeriosRoutes);
+app.use('/api/noticias', noticiasRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
