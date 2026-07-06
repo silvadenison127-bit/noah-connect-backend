@@ -12,6 +12,7 @@ const dizimosRoutes = require('./routes/dizimos');
 const financeiroRoutes = require('./routes/financeiro');
 const ministeriosRoutes = require('./routes/ministerios');
 const noticiasRoutes = require('./routes/noticias');
+const comunicadosRoutes = require('./routes/comunicados');
 
 const app = express();
 app.use(cors());
@@ -32,6 +33,7 @@ app.use('/api/dizimos', dizimosRoutes);
 app.use('/api/financeiro', financeiroRoutes);
 app.use('/api/ministerios', ministeriosRoutes);
 app.use('/api/noticias', noticiasRoutes);
+app.use('/api/comunicados', comunicadosRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
