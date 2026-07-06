@@ -9,6 +9,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const cultosRoutes = require('./routes/cultos');
 const celulasRoutes = require('./routes/celulas');
 const dizimosRoutes = require('./routes/dizimos');
+const financeiroRoutes = require('./routes/financeiro');
 
 const app = express();
 app.use(cors());
@@ -26,6 +27,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/cultos', cultosRoutes);
 app.use('/api/celulas', celulasRoutes);
 app.use('/api/dizimos', dizimosRoutes);
+app.use('/api/financeiro', financeiroRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
