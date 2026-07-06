@@ -1,21 +1,33 @@
 const express = require('express');
 const pool = require('../config/db');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
-
 const router = express.Router();
 
 router.get('/', autenticar, somenteAdmin, async (req, res) => {
   try {
-    const [membros, eventosMes, pedidos] = await Promise.all([
+    const [membros, eventosMes, pedidos, financeiro] = await Promise.all([
       pool.query(`SELECT COUNT(*) FROM usuarios WHERE ativo = true`),
       pool.query(`SELECT COUNT(*) FROM eventos WHERE date_trunc('month', data_inicio) = date_trunc('month', NOW())`),
-      pool.query(`SELECT COUNT(*) FROM pedidos_oracao WHERE status = 'em_oracao'`)
+      pool.query(`SELECT COUNT(*) FROM pedidos_oracao WHERE status = 'em_oracao'`),
+      pool.query(
+        `SELECT COALESCE(SUM(valor), 0) AS total
+         FROM dizimos_ofertas
+         WHERE date_trunc('month', data_lancamento) = date_trunc('month', CURRENT_DATE)`
+      )
     ]);
+
+    const entradas = parseFloat(financeiro.rows[0].total);
+    const saidas = 0;
 
     res.json({
       membros_ativos: parseInt(membros.rows[0].count, 10),
       eventos_este_mes: parseInt(eventosMes.rows[0].count, 10),
-      pedidos_em_oracao: parseInt(pedidos.rows[0].count, 10)
+      pedidos_em_oracao: parseInt(pedidos.rows[0].count, 10),
+      financeiro: {
+        entradas,
+        saidas,
+        saldo: entradas - saidas
+      }
     });
   } catch (err) {
     console.error(err);
