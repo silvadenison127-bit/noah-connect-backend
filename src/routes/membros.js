@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', autenticar, somenteAdmin, async (req, res) => {
   try {
     const resultado = await pool.query(
-      `SELECT id, nome, email, telefone, tipo, foto_url, membro_desde, ativo
+      `SELECT id, nome, email, telefone, tipo, foto_url, membro_desde, ativo, status
        FROM usuarios ORDER BY nome ASC`
     );
     res.json(resultado.rows);
@@ -21,26 +21,21 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
 // Criar novo membro (admin)
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
   const { nome, email, telefone, tipo, senha } = req.body;
-
   if (!nome || !email || !senha) {
     return res.status(400).json({ erro: 'Nome, email e senha são obrigatórios.' });
   }
-
   try {
     const existente = await pool.query('SELECT id FROM usuarios WHERE email = $1', [email]);
     if (existente.rows.length > 0) {
       return res.status(409).json({ erro: 'Já existe um usuário com esse email.' });
     }
-
     const senha_hash = await bcrypt.hash(senha, 10);
-
     const resultado = await pool.query(
-      `INSERT INTO usuarios (nome, email, senha_hash, telefone, tipo)
-       VALUES ($1, $2, $3, $4, COALESCE($5, 'membro'))
-       RETURNING id, nome, email, telefone, tipo, ativo, membro_desde`,
+      `INSERT INTO usuarios (nome, email, senha_hash, telefone, tipo, status)
+       VALUES ($1, $2, $3, $4, COALESCE($5, 'membro'), 'aprovado')
+       RETURNING id, nome, email, telefone, tipo, ativo, membro_desde, status`,
       [nome, email, senha_hash, telefone || null, tipo]
     );
-
     res.status(201).json(resultado.rows[0]);
   } catch (err) {
     console.error(err);
@@ -80,6 +75,52 @@ router.put('/perfil', autenticar, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao atualizar perfil' });
+  }
+});
+
+// Listar membros aguardando aprovação (admin)
+router.get('/pendentes', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT id, nome, email, telefone, criado_em
+       FROM usuarios WHERE status = 'pendente' ORDER BY criado_em ASC`
+    );
+    res.json(resultado.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao buscar pendentes' });
+  }
+});
+
+// Aprovar membro (admin)
+router.put('/:id/aprovar', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `UPDATE usuarios SET status = 'aprovado', atualizado_em = NOW()
+       WHERE id = $1 RETURNING id, nome, email, status`,
+      [req.params.id]
+    );
+    if (resultado.rows.length === 0) return res.status(404).json({ erro: 'Usuário não encontrado' });
+    res.json(resultado.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao aprovar membro' });
+  }
+});
+
+// Rejeitar membro (admin)
+router.put('/:id/rejeitar', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `UPDATE usuarios SET status = 'rejeitado', atualizado_em = NOW()
+       WHERE id = $1 RETURNING id, nome, email, status`,
+      [req.params.id]
+    );
+    if (resultado.rows.length === 0) return res.status(404).json({ erro: 'Usuário não encontrado' });
+    res.json(resultado.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao rejeitar membro' });
   }
 });
 
