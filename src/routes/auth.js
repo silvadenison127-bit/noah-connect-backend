@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const pool = require('../config/db');
 const router = express.Router();
 
-const ACCESS_TOKEN_EXPIRES_IN = '15m';
+const ACCESS_TOKEN_EXPIRES_IN = '1h';
 const REFRESH_TOKEN_EXPIRES_DAYS = 30;
 
 function gerarAccessToken(usuario) {
