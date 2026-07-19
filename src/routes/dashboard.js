@@ -121,9 +121,9 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
     try {
       const engajadosRes = await pool.query(
         `SELECT COUNT(DISTINCT p.usuario_id) AS total
-         FROM presencas p
-         JOIN cultos c ON c.id = p.culto_id
-         WHERE p.presente = true AND c.data_inicio >= NOW() - interval '30 days'`
+         FROM presencas_culto p
+         JOIN eventos e ON e.id = p.evento_id
+         WHERE p.presente = true AND e.tipo = 'culto' AND e.data_inicio >= NOW() - interval '30 days'`
       );
       const engajados = parseInt(engajadosRes.rows[0].total, 10);
       const engajamentoPct = totalAtivos > 0 ? (engajados / totalAtivos) * 100 : 0;
