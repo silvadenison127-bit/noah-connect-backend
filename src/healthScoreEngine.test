@@ -1,0 +1,83 @@
+/**
+ * healthScoreEngine.test.js
+ *
+ * Testes unitários do Health Score Engine, usando um pool de banco
+ * "fake" (mock) — não precisa de conexão real com o Postgres.
+ * Requer Jest instalado (`npm install --save-dev jest`).
+ */
+const { calcularSaudeIgreja } = require('../src/engines/healthScoreEngine');
+
+function criarPoolMock(respostas) {
+  let chamada = 0;
+  return {
+    query: jest.fn(() => {
+      const resposta = respostas[chamada];
+      chamada += 1;
+      if (resposta instanceof Error) return Promise.reject(resposta);
+      return Promise.resolve({ rows: [resposta] });
+    }),
+  };
+}
+
+describe('healthScoreEngine', () => {
+  test('calcula score geral quando todos os indicadores estão disponíveis', async () => {
+    const pool = criarPoolMock([
+      { total: '10' },   // frequência: total ativos
+      { total: '6' },    // frequência: presentes
+      { total: '10' },   // células: total ativos
+      { total: '4' },    // células: vinculados
+      { total: '10' },   // ministérios: total ativos
+      { total: '3' },    // ministérios: vinculados
+      { total: '10' },   // crescimento: total ativos
+      { total: '8' },    // crescimento: mês anterior
+      { total: '10' },   // retenção: total ativos
+      { total: '7' },    // retenção: retidos
+      { total: '10' },   // participação eventos: total ativos
+      { total: '5' },    // participação eventos: presentes
+      { total: '2' },    // pedidos de oração ativos
+    ]);
+
+    const resultado = await calcularSaudeIgreja(pool);
+
+    expect(resultado.score).not.toBeNull();
+    expect(typeof resultado.score).toBe('number');
+    expect(resultado.indicadores.frequenciaCultos.percentual).toBe(60);
+    expect(resultado.indicadores.pedidosOracaoAtivos.total).toBe(2);
+    expect(resultado.indicadores.visitantesRecorrentes.percentual).toBeNull();
+  });
+
+  test('não quebra quando uma tabela não existe (fica indisponível, resto segue)', async () => {
+    const pool = criarPoolMock([
+      { total: '10' },
+      { total: '6' },
+      new Error('relation "celula_membros" does not exist'),
+      { total: '10' },
+      { total: '3' },
+      { total: '10' },
+      { total: '8' },
+      { total: '10' },
+      { total: '7' },
+      { total: '10' },
+      { total: '5' },
+      { total: '2' },
+    ]);
+
+    const resultado = await calcularSaudeIgreja(pool);
+
+    expect(resultado.indicadores.participacaoCelulas.percentual).toBeNull();
+    expect(resultado.indicadores.participacaoCelulas.label).toBe('Indisponível');
+    // demais indicadores continuam calculados normalmente
+    expect(resultado.indicadores.frequenciaCultos.percentual).toBe(60);
+    expect(resultado.score).not.toBeNull();
+  });
+
+  test('retorna "Dados insuficientes" quando não há nenhum indicador disponível', async () => {
+    const erro = new Error('tabela inexistente');
+    const pool = criarPoolMock(Array(13).fill(erro));
+
+    const resultado = await calcularSaudeIgreja(pool);
+
+    expect(resultado.score).toBeNull();
+    expect(resultado.label).toBe('Dados insuficientes');
+  });
+});
