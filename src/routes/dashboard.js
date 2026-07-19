@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
+const dashboardService = require('../services/dashboardService');
 const router = express.Router();
 
 router.get('/', autenticar, somenteAdmin, async (req, res) => {
@@ -169,7 +170,12 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
     console.error('Erro geral ao calcular indicadores estratégicos:', err);
   }
 
-  res.json({ ...statsBase, indicadores });
+  // ===== BLOCO 3: Saúde da Igreja detalhada (Fase 4.1) =====
+  // Orquestrado via dashboardService -> healthScoreEngine.
+  // Aditivo: se falhar, não afeta statsBase nem indicadores acima.
+  const saude_detalhada = await dashboardService.obterSaudeDetalhada(pool);
+
+  res.json({ ...statsBase, indicadores, saude_detalhada });
 });
 
 module.exports = router;
