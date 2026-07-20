@@ -166,12 +166,17 @@ async function calcularSaudeIgreja(pool) {
   // renormalizando os pesos para não penalizar por indicador ausente.
   const partes = Object.entries(config.pesos)
     .map(([chave, peso]) => ({ valor: indicadores[chave]?.percentual, peso }))
-    .filter((p) => typeof p.valor === 'number');
+    .filter((p) => typeof p.valor === 'number')
+    // Trava cada indicador em 0-100 apenas para o score geral — um
+    // crescimento de +600% não pode valer 6x mais que os 100% de um
+    // indicador "perfeito". Os valores individuais exibidos (ex: a barra
+    // de Crescimento) continuam mostrando o percentual real, sem corte.
+    .map((p) => ({ ...p, valor: Math.min(Math.max(p.valor, 0), 100) }));
 
   let scoreGeral = null;
   if (partes.length > 0) {
     const pesoTotal = partes.reduce((s, p) => s + p.peso, 0);
-    scoreGeral = Math.round(partes.reduce((s, p) => s + p.valor * p.peso, 0) / pesoTotal);
+    scoreGeral = Math.min(Math.round(partes.reduce((s, p) => s + p.valor * p.peso, 0) / pesoTotal), 100);
   }
 
   return {
