@@ -12,6 +12,7 @@
  * engines já existentes precisem ser alterados.
  */
 const { calcularSaudeIgreja } = require('../engines/healthScoreEngine');
+const { gerarAlertas } = require('../engines/alertEngine');
 
 async function obterSaudeDetalhada(pool) {
   try {
@@ -22,4 +23,13 @@ async function obterSaudeDetalhada(pool) {
   }
 }
 
-module.exports = { obterSaudeDetalhada };
+async function obterAlertas(pool) {
+  try {
+    return await gerarAlertas(pool);
+  } catch (err) {
+    console.error('Erro ao gerar alertas:', err);
+    return [];
+  }
+}
+
+module.exports = { obterSaudeDetalhada, obterAlertas };
