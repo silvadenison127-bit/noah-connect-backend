@@ -176,7 +176,11 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
   // ===== BLOCO 4: Alertas Inteligentes (Fase 4.2) =====
   const alertas = await dashboardService.obterAlertas(pool);
 
-  res.json({ ...statsBase, indicadores, saude_detalhada, alertas });
+  // ===== BLOCO 5: Recomendações (Fase 4.3) =====
+  // Reaproveita os alertas já calculados acima — sem nova consulta ao banco.
+  const recomendacoes = dashboardService.obterRecomendacoes(alertas);
+
+  res.json({ ...statsBase, indicadores, saude_detalhada, alertas, recomendacoes });
 });
 
 module.exports = router;
