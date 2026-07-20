@@ -13,6 +13,7 @@
  */
 const { calcularSaudeIgreja } = require('../engines/healthScoreEngine');
 const { gerarAlertas } = require('../engines/alertEngine');
+const { gerarRecomendacoes } = require('../engines/recommendationEngine');
 
 async function obterSaudeDetalhada(pool) {
   try {
@@ -32,4 +33,16 @@ async function obterAlertas(pool) {
   }
 }
 
-module.exports = { obterSaudeDetalhada, obterAlertas };
+// Recebe os alertas já calculados (evita nova consulta ao banco).
+// Não depende do alertEngine diretamente — apenas dos dados que
+// o dashboardService já obteve via obterAlertas.
+function obterRecomendacoes(alertas) {
+  try {
+    return gerarRecomendacoes(alertas);
+  } catch (err) {
+    console.error('Erro ao gerar recomendações:', err);
+    return [];
+  }
+}
+
+module.exports = { obterSaudeDetalhada, obterAlertas, obterRecomendacoes };
