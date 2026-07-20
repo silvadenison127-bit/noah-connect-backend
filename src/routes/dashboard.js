@@ -180,11 +180,15 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
   const recomendacoes = dashboardService.obterRecomendacoes(alertas);
 
   // ===== BLOCO 6: Previsões (Fase 4.4) =====
-  // Apenas infraestrutura: sem histórico (Fase 4.5), sempre honesto
-  // sobre dados insuficientes — nenhum valor estimado é inventado.
+  // Apenas infraestrutura: sem histórico próprio ainda usado aqui,
+  // sempre honesto sobre dados insuficientes.
   const previsoes = await dashboardService.obterPrevisoes(pool);
 
-  res.json({ ...statsBase, indicadores, saude_detalhada, alertas, recomendacoes, previsoes });
+  // ===== BLOCO 7: Histórico (Fase 4.5) =====
+  // Séries mensais calculadas sob demanda a partir de dados reais.
+  const historico = await dashboardService.obterHistorico(pool);
+
+  res.json({ ...statsBase, indicadores, saude_detalhada, alertas, recomendacoes, previsoes, historico });
 });
 
 module.exports = router;
