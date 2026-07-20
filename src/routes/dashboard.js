@@ -171,11 +171,12 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
   }
 
   // ===== BLOCO 3: Saúde da Igreja detalhada (Fase 4.1) =====
-  // Orquestrado via dashboardService -> healthScoreEngine.
-  // Aditivo: se falhar, não afeta statsBase nem indicadores acima.
   const saude_detalhada = await dashboardService.obterSaudeDetalhada(pool);
 
-  res.json({ ...statsBase, indicadores, saude_detalhada });
+  // ===== BLOCO 4: Alertas Inteligentes (Fase 4.2) =====
+  const alertas = await dashboardService.obterAlertas(pool);
+
+  res.json({ ...statsBase, indicadores, saude_detalhada, alertas });
 });
 
 module.exports = router;
