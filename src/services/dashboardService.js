@@ -15,6 +15,7 @@ const { calcularSaudeIgreja } = require('../engines/healthScoreEngine');
 const { gerarAlertas } = require('../engines/alertEngine');
 const { gerarRecomendacoes } = require('../engines/recommendationEngine');
 const { gerarPrevisoes } = require('../engines/predictionEngine');
+const { obterHistorico: calcularHistorico } = require('../engines/historicalMetricsEngine');
 
 async function obterSaudeDetalhada(pool) {
   try {
@@ -52,4 +53,13 @@ async function obterPrevisoes(pool) {
   }
 }
 
-module.exports = { obterSaudeDetalhada, obterAlertas, obterRecomendacoes, obterPrevisoes };
+async function obterHistorico(pool) {
+  try {
+    return await calcularHistorico(pool);
+  } catch (err) {
+    console.error('Erro ao calcular histórico:', err);
+    return {};
+  }
+}
+
+module.exports = { obterSaudeDetalhada, obterAlertas, obterRecomendacoes, obterPrevisoes, obterHistorico };
