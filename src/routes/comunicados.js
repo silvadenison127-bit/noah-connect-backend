@@ -6,6 +6,7 @@ const router = express.Router();
 // Listar comunicados relevantes para o usuário logado (todos + suas células/ministérios)
 router.get('/', autenticar, async (req, res) => {
   try {
+    console.log('DEBUG comunicados - usuario_id:', req.usuario.id, '- usuario completo:', JSON.stringify(req.usuario));
     const resultado = await pool.query(
       `SELECT c.*, u.nome AS autor_nome,
               EXISTS (
@@ -24,6 +25,7 @@ router.get('/', autenticar, async (req, res) => {
        ORDER BY c.criado_em DESC`,
       [req.usuario.id]
     );
+    console.log('DEBUG comunicados - linhas retornadas:', resultado.rows.length);
     res.json(resultado.rows);
   } catch (err) {
     console.error(err);
