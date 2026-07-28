@@ -7,6 +7,10 @@ const router = express.Router();
 router.get('/', autenticar, async (req, res) => {
   try {
     console.log('DEBUG comunicados - usuario_id:', req.usuario.id, '- usuario completo:', JSON.stringify(req.usuario));
+
+    const debugRaw = await pool.query(`SELECT id, publico_alvo, length(publico_alvo) as tamanho FROM comunicados`);
+    console.log('DEBUG comunicados - valores brutos:', JSON.stringify(debugRaw.rows));
+
     const resultado = await pool.query(
       `SELECT c.*, u.nome AS autor_nome,
               EXISTS (
