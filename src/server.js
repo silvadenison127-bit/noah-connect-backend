@@ -15,15 +15,13 @@ const noticiasRoutes = require('./routes/noticias');
 const comunicadosRoutes = require('./routes/comunicados');
 const relatoriosRoutes = require('./routes/relatorios');
 const configuracoesRoutes = require('./routes/configuracoes');
-
+const estudosBiblicosRoutes = require('./routes/estudosBiblicos');
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
-
 app.get('/', (req, res) => {
   res.json({ status: 'ok', servico: 'Noah Connect API' });
 });
-
 app.use('/api/auth', authRoutes);
 app.use('/api/membros', membrosRoutes);
 app.use('/api/eventos', eventosRoutes);
@@ -38,7 +36,7 @@ app.use('/api/noticias', noticiasRoutes);
 app.use('/api/comunicados', comunicadosRoutes);
 app.use('/api/relatorios', relatoriosRoutes);
 app.use('/api/configuracoes', configuracoesRoutes);
-
+app.use('/api/estudos-biblicos', estudosBiblicosRoutes);
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Noah Connect API rodando na porta ${PORT}`);
