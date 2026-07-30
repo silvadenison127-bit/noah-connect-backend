@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', autenticar, somenteAdmin, async (req, res) => {
   try {
     const resultado = await pool.query(
-      `SELECT id, nome, email, telefone, tipo, foto_url, membro_desde, ativo, status
+      `SELECT id, nome, email, telefone, cpf, tipo, foto_url, membro_desde, ativo, status
        FROM usuarios ORDER BY nome ASC`
     );
     res.json(resultado.rows);
@@ -20,7 +20,7 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
 
 // Criar novo membro (admin)
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
-  const { nome, email, telefone, tipo, senha } = req.body;
+  const { nome, email, telefone, tipo, senha, cpf } = req.body;
   if (!nome || !email || !senha) {
     return res.status(400).json({ erro: 'Nome, email e senha são obrigatórios.' });
   }
@@ -31,10 +31,10 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
     }
     const senha_hash = await bcrypt.hash(senha, 10);
     const resultado = await pool.query(
-      `INSERT INTO usuarios (nome, email, senha_hash, telefone, tipo, status)
-       VALUES ($1, $2, $3, $4, COALESCE($5, 'membro'), 'aprovado')
-       RETURNING id, nome, email, telefone, tipo, ativo, membro_desde, status`,
-      [nome, email, senha_hash, telefone || null, tipo]
+      `INSERT INTO usuarios (nome, email, senha_hash, telefone, cpf, tipo, status)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'membro'), 'aprovado')
+       RETURNING id, nome, email, telefone, cpf, tipo, ativo, membro_desde, status`,
+      [nome, email, senha_hash, telefone || null, cpf || null, tipo]
     );
     res.status(201).json(resultado.rows[0]);
   } catch (err) {
@@ -47,7 +47,7 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
 router.get('/perfil', autenticar, async (req, res) => {
   try {
     const resultado = await pool.query(
-      `SELECT id, nome, email, telefone, tipo, foto_url, membro_desde
+      `SELECT id, nome, email, telefone, cpf, tipo, foto_url, membro_desde
        FROM usuarios WHERE id = $1`,
       [req.usuario.id]
     );
@@ -58,18 +58,19 @@ router.get('/perfil', autenticar, async (req, res) => {
   }
 });
 
-// Atualizar próprio perfil (foto, telefone)
+// Atualizar próprio perfil (foto, telefone, cpf)
 router.put('/perfil', autenticar, async (req, res) => {
-  const { foto_url, telefone } = req.body;
+  const { foto_url, telefone, cpf } = req.body;
   try {
     const resultado = await pool.query(
       `UPDATE usuarios SET
         foto_url = COALESCE($1, foto_url),
         telefone = COALESCE($2, telefone),
+        cpf = COALESCE($3, cpf),
         atualizado_em = NOW()
-       WHERE id = $3
-       RETURNING id, nome, email, telefone, tipo, foto_url`,
-      [foto_url, telefone, req.usuario.id]
+       WHERE id = $4
+       RETURNING id, nome, email, telefone, cpf, tipo, foto_url`,
+      [foto_url, telefone, cpf, req.usuario.id]
     );
     res.json(resultado.rows[0]);
   } catch (err) {
@@ -127,7 +128,7 @@ router.put('/:id/rejeitar', autenticar, somenteAdmin, async (req, res) => {
 // Atualizar membro (admin)
 router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
   const { id } = req.params;
-  const { nome, telefone, tipo, ativo } = req.body;
+  const { nome, telefone, tipo, ativo, cpf } = req.body;
   try {
     const resultado = await pool.query(
       `UPDATE usuarios SET
@@ -135,10 +136,11 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
         telefone = COALESCE($2, telefone),
         tipo = COALESCE($3, tipo),
         ativo = COALESCE($4, ativo),
+        cpf = COALESCE($5, cpf),
         atualizado_em = NOW()
-       WHERE id = $5
-       RETURNING id, nome, email, telefone, tipo, ativo`,
-      [nome, telefone, tipo, ativo, id]
+       WHERE id = $6
+       RETURNING id, nome, email, telefone, cpf, tipo, ativo`,
+      [nome, telefone, tipo, ativo, cpf, id]
     );
     if (resultado.rows.length === 0) {
       return res.status(404).json({ erro: 'Membro não encontrado' });
