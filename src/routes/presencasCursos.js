@@ -75,6 +75,44 @@ router.post('/lote', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
+// Frequencia de todos os alunos de uma turma (admin) - para relatorios
+router.get('/turma/:turmaId/relatorio-frequencia', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT
+        ic.id AS inscricao_id,
+        ic.nome_completo,
+        ic.telefone,
+        ic.email,
+        ic.cpf,
+        ic.status AS status_inscricao,
+        COUNT(p.*) FILTER (WHERE p.status = 'presente') AS presencas,
+        COUNT(p.*) FILTER (WHERE p.status = 'ausente') AS faltas,
+        COUNT(p.*) FILTER (WHERE p.status = 'atrasado') AS atrasos,
+        COUNT(p.*) FILTER (WHERE p.status = 'justificado') AS justificadas,
+        COUNT(p.*) AS total_aulas
+       FROM inscricoes_cursos ic
+       LEFT JOIN presencas_cursos p ON p.inscricao_id = ic.id
+       WHERE ic.turma_id = $1 AND ic.status != 'cancelado'
+       GROUP BY ic.id, ic.nome_completo, ic.telefone, ic.email, ic.cpf, ic.status
+       ORDER BY ic.nome_completo ASC`,
+      [req.params.turmaId]
+    );
+
+    const linhas = resultado.rows.map((linha) => {
+      const total = parseInt(linha.total_aulas, 10);
+      const presentes = parseInt(linha.presencas, 10);
+      const percentual = total > 0 ? Math.round((presentes / total) * 100) : 0;
+      return { ...linha, percentual_frequencia: percentual };
+    });
+
+    res.json(linhas);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao gerar relatorio de frequencia' });
+  }
+});
+
 // Frequencia individual de um aluno (admin)
 router.get('/frequencia/:inscricaoId', autenticar, somenteAdmin, async (req, res) => {
   try {
