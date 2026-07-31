@@ -20,6 +20,7 @@ const cursosRoutes = require('./routes/cursos');
 const turmasRoutes = require('./routes/turmas');
 const inscricoesCursosRoutes = require('./routes/inscricoesCursos');
 const presencasCursosRoutes = require('./routes/presencasCursos');
+const iaNoahRoutes = require('./routes/iaNoah');
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
@@ -45,6 +46,7 @@ app.use('/api/cursos', cursosRoutes);
 app.use('/api/turmas', turmasRoutes);
 app.use('/api/inscricoes-cursos', inscricoesCursosRoutes);
 app.use('/api/presencas-cursos', presencasCursosRoutes);
+app.use('/api/ia-noah', iaNoahRoutes);
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Noah Connect API rodando na porta ${PORT}`);
