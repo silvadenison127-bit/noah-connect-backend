@@ -152,7 +152,7 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
-// Excluir múltiplos membros (admin) — com travas de segurança
+// Excluir múltiplos membros (admin) — com travas de segurança + cascade
 router.post('/excluir-multiplos', autenticar, somenteAdmin, async (req, res) => {
   const { ids } = req.body;
 
@@ -160,7 +160,6 @@ router.post('/excluir-multiplos', autenticar, somenteAdmin, async (req, res) => 
     return res.status(400).json({ erro: 'Nenhum membro selecionado para exclusão.' });
   }
 
-  // Normaliza: string, sem duplicados, sem vazios (compatível com id inteiro ou UUID)
   const idsLimpos = [...new Set(ids.map((v) => String(v).trim()).filter(Boolean))];
   if (idsLimpos.length === 0) {
     return res.status(400).json({ erro: 'IDs inválidos.' });
@@ -184,7 +183,6 @@ router.post('/excluir-multiplos', autenticar, somenteAdmin, async (req, res) => 
        WHERE tipo = 'admin' AND id::text = ANY($1::text[])`,
       [idsLimpos]
     );
-
     const restantes = totalAdmins.rows[0].total - adminsSelecionados.rows[0].total;
     if (restantes < 1) {
       await client.query('ROLLBACK');
@@ -193,6 +191,30 @@ router.post('/excluir-multiplos', autenticar, somenteAdmin, async (req, res) => 
       });
     }
 
+    // Descobre TODAS as tabelas/colunas que referenciam usuarios(id)
+    const refs = await client.query(`
+      SELECT tc.table_name AS tabela, kcu.column_name AS coluna
+      FROM information_schema.table_constraints tc
+      JOIN information_schema.key_column_usage kcu
+        ON tc.constraint_name = kcu.constraint_name
+       AND tc.table_schema = kcu.table_schema
+      JOIN information_schema.constraint_column_usage ccu
+        ON tc.constraint_name = ccu.constraint_name
+       AND tc.table_schema = ccu.table_schema
+      WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND ccu.table_name = 'usuarios'
+        AND ccu.column_name = 'id'
+    `);
+
+    // Apaga os registros filhos em cada tabela vinculada
+    for (const { tabela, coluna } of refs.rows) {
+      await client.query(
+        `DELETE FROM "${tabela}" WHERE "${coluna}"::text = ANY($1::text[])`,
+        [idsLimpos]
+      );
+    }
+
+    // Por fim, apaga os próprios membros
     const del = await client.query(
       `DELETE FROM usuarios WHERE id::text = ANY($1::text[]) RETURNING id`,
       [idsLimpos]
