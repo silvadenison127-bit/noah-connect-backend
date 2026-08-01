@@ -18,7 +18,7 @@ async function montarContexto(pool) {
     const [membros, celulas, dizimos, cultos, oracao] = await Promise.all([
       pool.query(`SELECT COUNT(*) FROM usuarios WHERE ativo = true`),
       pool.query(`SELECT COUNT(*) FROM celulas`),
-      pool.query(`SELECT COALESCE(SUM(valor), 0) AS total FROM dizimos WHERE data >= date_trunc('month', CURRENT_DATE)`),
+      pool.query(`SELECT COALESCE(SUM(valor), 0) AS total FROM dizimos_ofertas WHERE data_lancamento >= date_trunc('month', CURRENT_DATE)`),
       pool.query(`SELECT COUNT(*) FROM eventos WHERE tipo = 'culto' AND data_inicio >= CURRENT_DATE`),
       pool.query(`SELECT COUNT(*) FROM pedidos_oracao WHERE status != 'encerrado'`),
     ]);
