@@ -152,6 +152,63 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
+// Excluir múltiplos membros (admin) — com travas de segurança
+router.post('/excluir-multiplos', autenticar, somenteAdmin, async (req, res) => {
+  const { ids } = req.body;
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ erro: 'Nenhum membro selecionado para exclusão.' });
+  }
+
+  // Normaliza: string, sem duplicados, sem vazios (compatível com id inteiro ou UUID)
+  const idsLimpos = [...new Set(ids.map((v) => String(v).trim()).filter(Boolean))];
+  if (idsLimpos.length === 0) {
+    return res.status(400).json({ erro: 'IDs inválidos.' });
+  }
+
+  // Trava 1: não pode excluir o próprio usuário logado
+  if (idsLimpos.includes(String(req.usuario.id))) {
+    return res.status(403).json({ erro: 'Você não pode excluir o seu próprio usuário.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Trava 2: não pode excluir o último administrador do sistema
+    const totalAdmins = await client.query(
+      `SELECT COUNT(*)::int AS total FROM usuarios WHERE tipo = 'admin'`
+    );
+    const adminsSelecionados = await client.query(
+      `SELECT COUNT(*)::int AS total FROM usuarios
+       WHERE tipo = 'admin' AND id::text = ANY($1::text[])`,
+      [idsLimpos]
+    );
+
+    const restantes = totalAdmins.rows[0].total - adminsSelecionados.rows[0].total;
+    if (restantes < 1) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        erro: 'Não é possível excluir todos os administradores. O sistema precisa de pelo menos um admin.',
+      });
+    }
+
+    const del = await client.query(
+      `DELETE FROM usuarios WHERE id::text = ANY($1::text[]) RETURNING id`,
+      [idsLimpos]
+    );
+
+    await client.query('COMMIT');
+    res.json({ excluidos: del.rowCount, ids: del.rows.map((r) => r.id) });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao excluir membros.' });
+  } finally {
+    client.release();
+  }
+});
+
 // Remover membro (admin)
 router.delete('/:id', autenticar, somenteAdmin, async (req, res) => {
   try {
