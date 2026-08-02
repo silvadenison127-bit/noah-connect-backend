@@ -21,6 +21,8 @@ const turmasRoutes = require('./routes/turmas');
 const inscricoesCursosRoutes = require('./routes/inscricoesCursos');
 const presencasCursosRoutes = require('./routes/presencasCursos');
 const iaNoahRoutes = require('./routes/iaNoah');
+const metricsRoutes = require('./routes/metrics'); // NOVO — camada oficial de métricas
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
@@ -47,6 +49,8 @@ app.use('/api/turmas', turmasRoutes);
 app.use('/api/inscricoes-cursos', inscricoesCursosRoutes);
 app.use('/api/presencas-cursos', presencasCursosRoutes);
 app.use('/api/ia-noah', iaNoahRoutes);
+app.use('/api/metrics', metricsRoutes); // NOVO — expõe /api/metrics/contagens
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Noah Connect API rodando na porta ${PORT}`);
