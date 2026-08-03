@@ -66,4 +66,24 @@ router.get('/financeiro-status', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
+router.get('/igreja-saudavel', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const saude = await metricsService.igrejaSaudavel();
+    res.json(saude);
+  } catch (err) {
+    console.error('[metrics] Erro no igreja-saudavel:', err);
+    res.status(500).json({ erro: 'Erro ao calcular igreja saudavel.' });
+  }
+});
+
+router.get('/ia-score', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const score = await metricsService.iaScore();
+    res.json(score);
+  } catch (err) {
+    console.error('[metrics] Erro no ia-score:', err);
+    res.status(500).json({ erro: 'Erro ao calcular IA score.' });
+  }
+});
+
 module.exports = router;

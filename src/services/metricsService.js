@@ -507,6 +507,131 @@ const metricsService = {
     }
   },
 
+  /**
+   * Igreja Saudável (indicador inteligente composto, Fase 2).
+   * Combina Engajamento, Retenção, Crescimento e Financeiro numa nota 0-100.
+   * Só entram no cálculo componentes com valor numérico disponível —
+   * pesos dos ausentes são redistribuídos proporcionalmente.
+   *
+   * Pesos centralizados (ajustáveis sem mudar a lógica):
+   *   Engajamento 30% | Retenção 30% | Crescimento 20% | Financeiro 20%
+   * (Retenção pesa igual a Engajamento: cuidar de quem já está é tão
+   *  importante quanto crescer em número — decisão pastoral documentada.)
+   *
+   * Crescimento (percentual ilimitado) é convertido em nota 0-100 via
+   * curva sigmoide suave (ver CRESCIMENTO_SIGMOIDE_K / _PONTO_NEUTRO),
+   * evitando saltos bruscos entre meses.
+   * Financeiro (classificação) é convertido: Saudável=100, Atenção=50, Crítico=0.
+   */
+  async igrejaSaudavel() {
+    const PESOS_SAUDE = { engajamento: 30, retencao: 30, crescimento: 20, financeiro: 20 };
+    const CRESCIMENTO_SIGMOIDE_K = 0.06;      // inclinação da curva
+    const CRESCIMENTO_PONTO_NEUTRO = 0;       // % de crescimento considerado neutro
+    const NOTA_FINANCEIRO = { saudavel: 100, atencao: 50, critico: 0 };
+
+    try {
+      const [engaj, reten, cresc, fin] = await Promise.all([
+        this.engajamento(),
+        this.retencao(),
+        this.crescimento(),
+        this.statusFinanceiro(),
+      ]);
+
+      const componentes = [];
+
+      if (engaj.estado === 'real' && typeof engaj.valor === 'number') {
+        componentes.push({ nome: 'Engajamento', peso: PESOS_SAUDE.engajamento, nota: engaj.valor });
+      }
+      if (reten.estado === 'real' && typeof reten.valor === 'number') {
+        componentes.push({ nome: 'Retenção', peso: PESOS_SAUDE.retencao, nota: reten.valor });
+      }
+      if (cresc.estado === 'real' && typeof cresc.valor === 'number') {
+        const expo = -CRESCIMENTO_SIGMOIDE_K * (cresc.valor - CRESCIMENTO_PONTO_NEUTRO);
+        const notaCrescimento = 100 / (1 + Math.exp(expo));
+        componentes.push({ nome: 'Crescimento', peso: PESOS_SAUDE.crescimento, nota: notaCrescimento });
+      }
+      if (fin.estado === 'real' && fin.classificacao in NOTA_FINANCEIRO) {
+        componentes.push({ nome: 'Financeiro', peso: PESOS_SAUDE.financeiro, nota: NOTA_FINANCEIRO[fin.classificacao] });
+      }
+
+      if (componentes.length === 0) {
+        return {
+          valor: null,
+          estado: 'aguardando_dados',
+          rotulo: 'Aguardando dados',
+          componentes: [],
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'composto',
+        };
+      }
+
+      const pesoTotal = componentes.reduce((s, c) => s + c.peso, 0);
+      const notaFinal = componentes.reduce((s, c) => s + c.nota * (c.peso / pesoTotal), 0);
+
+      return {
+        valor: Math.round(notaFinal),
+        estado: 'real',
+        rotulo: `${Math.round(notaFinal)}%`,
+        componentes,
+        ultimaAtualizacao: new Date().toISOString(),
+        origem: 'composto',
+      };
+    } catch (err) {
+      console.error('[metricsService] Erro ao calcular igrejaSaudavel:', err.message);
+      return {
+        valor: null, estado: 'erro', rotulo: '—',
+        ultimaAtualizacao: new Date().toISOString(), origem: 'composto',
+      };
+    }
+  },
+
+  /**
+   * IA Score (indicador inteligente, Fase 2).
+   * Resumo executivo derivado da Igreja Saudável (70%) + Engajamento (30%),
+   * quando ambos disponíveis. Honesto: sem Igreja Saudável, não pontua.
+   */
+  async iaScore() {
+    const PESO_SAUDE = 0.7;
+    const PESO_ENGAJAMENTO = 0.3;
+
+    try {
+      const [saude, engaj] = await Promise.all([this.igrejaSaudavel(), this.engajamento()]);
+
+      if (saude.estado !== 'real' || typeof saude.valor !== 'number') {
+        return {
+          valor: null,
+          estado: 'aguardando_dados',
+          rotulo: 'Aguardando dados',
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'composto',
+        };
+      }
+
+      let score;
+      if (engaj.estado === 'real' && typeof engaj.valor === 'number') {
+        score = saude.valor * PESO_SAUDE + engaj.valor * PESO_ENGAJAMENTO;
+      } else {
+        score = saude.valor;
+      }
+
+      const pontos = Math.round(score);
+
+      return {
+        valor: pontos,
+        estado: 'real',
+        rotulo: `${pontos}/100`,
+        ultimaAtualizacao: new Date().toISOString(),
+        origem: 'composto',
+      };
+    } catch (err) {
+      console.error('[metricsService] Erro ao calcular iaScore:', err.message);
+      return {
+        valor: null, estado: 'erro', rotulo: '—',
+        ultimaAtualizacao: new Date().toISOString(), origem: 'composto',
+      };
+    }
+  },
+
   async coletarContagens() {
     const [
       membrosAtivos, administradores, lideres, celulas, ministerios,
