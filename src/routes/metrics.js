@@ -26,4 +26,14 @@ router.get('/seguranca', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
+router.get('/crescimento', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const crescimento = await metricsService.crescimento();
+    res.json(crescimento);
+  } catch (err) {
+    console.error('[metrics] Erro no crescimento:', err);
+    res.status(500).json({ erro: 'Erro ao calcular crescimento.' });
+  }
+});
+
 module.exports = router;

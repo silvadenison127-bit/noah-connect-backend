@@ -130,6 +130,110 @@ const metricsService = {
     return securityService.avaliar(pool);
   },
 
+  /**
+   * Crescimento de membros (indicador inteligente, Fase 2).
+   * Origem: usuarios.membro_desde | Módulo: Membros
+   * Regra: compara o mês atual (em andamento) com a média dos últimos
+   * até 6 meses FECHADOS de novos membros ativos.
+   * Nunca divide por zero; trata histórico ausente/zero com mensagens próprias.
+   * Recalculado sob demanda — sem tabela auxiliar (fonte única: usuarios).
+   */
+  async crescimento() {
+    try {
+      const { rows } = await pool.query(`
+        SELECT
+          date_trunc('month', membro_desde) AS mes,
+          COUNT(*) AS total
+        FROM usuarios
+        WHERE ativo = true
+          AND membro_desde >= date_trunc('month', CURRENT_DATE) - interval '6 months'
+        GROUP BY date_trunc('month', membro_desde)
+        ORDER BY mes ASC
+      `);
+
+      const mesAtualChave = new Date().toISOString().slice(0, 7);
+      const porMes = {};
+      rows.forEach((r) => {
+        const chave = new Date(r.mes).toISOString().slice(0, 7);
+        porMes[chave] = parseInt(r.total, 10);
+      });
+
+      const mesesHistoricos = Object.keys(porMes).filter((m) => m !== mesAtualChave);
+      const totalAtual = porMes[mesAtualChave] ?? 0;
+
+      if (mesesHistoricos.length === 0) {
+        return {
+          valor: null,
+          estado: 'aguardando_dados',
+          rotulo: 'Histórico insuficiente',
+          mesAtual: totalAtual,
+          mediaHistorica: null,
+          mesesConsiderados: 0,
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'usuarios',
+        };
+      }
+
+      const somaHistorica = mesesHistoricos.reduce((s, m) => s + porMes[m], 0);
+      const mediaHistorica = somaHistorica / mesesHistoricos.length;
+
+      if (mediaHistorica === 0 && totalAtual === 0) {
+        return {
+          valor: 0,
+          estado: 'aguardando_dados',
+          rotulo: 'Aguardando histórico',
+          mesAtual: totalAtual,
+          mediaHistorica,
+          mesesConsiderados: mesesHistoricos.length,
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'usuarios',
+        };
+      }
+
+      if (mediaHistorica === 0 && totalAtual > 0) {
+        return {
+          valor: null,
+          estado: 'real',
+          rotulo: 'Primeiro crescimento registrado',
+          mesAtual: totalAtual,
+          mediaHistorica,
+          mesesConsiderados: mesesHistoricos.length,
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'usuarios',
+        };
+      }
+
+      const percentual = ((totalAtual - mediaHistorica) / mediaHistorica) * 100;
+
+      const mesesOrdenados = [...mesesHistoricos].sort();
+      const mesAnteriorChave = mesesOrdenados[mesesOrdenados.length - 1];
+      const totalMesAnterior = porMes[mesAnteriorChave] ?? null;
+
+      return {
+        valor: Math.round(percentual * 10) / 10,
+        estado: 'real',
+        rotulo: `${percentual >= 0 ? '+' : ''}${Math.round(percentual * 10) / 10}%`,
+        mesAtual: totalAtual,
+        mediaHistorica: Math.round(mediaHistorica * 10) / 10,
+        mesesConsiderados: mesesHistoricos.length,
+        complementar: {
+          mesAnterior: totalMesAnterior,
+          variacaoMesAnterior: totalMesAnterior
+            ? Math.round(((totalAtual - totalMesAnterior) / totalMesAnterior) * 1000) / 10
+            : null,
+        },
+        ultimaAtualizacao: new Date().toISOString(),
+        origem: 'usuarios',
+      };
+    } catch (err) {
+      console.error('[metricsService] Erro ao calcular crescimento:', err.message);
+      return {
+        valor: null, estado: 'erro', rotulo: '—',
+        ultimaAtualizacao: new Date().toISOString(), origem: 'usuarios',
+      };
+    }
+  },
+
   async coletarContagens() {
     const [
       membrosAtivos, administradores, lideres, celulas, ministerios,
