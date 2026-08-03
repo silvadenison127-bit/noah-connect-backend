@@ -133,10 +133,6 @@ const metricsService = {
   /**
    * Crescimento de membros (indicador inteligente, Fase 2).
    * Origem: usuarios.membro_desde | Módulo: Membros
-   * Regra: compara o mês atual (em andamento) com a média dos últimos
-   * até 6 meses FECHADOS de novos membros ativos.
-   * Nunca divide por zero; trata histórico ausente/zero com mensagens próprias.
-   * Recalculado sob demanda — sem tabela auxiliar (fonte única: usuarios).
    */
   async crescimento() {
     try {
@@ -237,9 +233,6 @@ const metricsService = {
   /**
    * Retenção de membros (indicador inteligente, Fase 2).
    * Origem: usuarios.membro_desde, usuarios.ativo | Módulo: Membros
-   * Regra: dos membros com 180+ dias de cadastro (elegíveis), qual % continua ativo.
-   * Membros com menos de 180 dias ficam em "período de integração" —
-   * não contam nem como retidos nem como perdidos.
    */
   async retencao() {
     try {
@@ -296,23 +289,11 @@ const metricsService = {
   /**
    * Engajamento de membros (indicador inteligente, Fase 2).
    * Origem: presencas_culto, membros_celula, membros_ministerio | Módulo: Membros
-   *
-   * Arquitetura modular: cada componente é independente, com peso próprio.
-   * Só entram no cálculo os componentes com dado real disponível — os pesos
-   * dos ausentes são redistribuídos proporcionalmente entre os presentes.
-   *
-   * Componentes desta versão (proxy = vínculo estrutural, não frequência):
-   *   Cultos (40%)      -> presença registrada em presencas_culto, 60 dias.
-   *   Células (30%)     -> vínculo ativo em membros_celula (proxy).
-   *   Ministérios (30%) -> vínculo ativo em membros_ministerio (proxy).
-   *
-   * Extensão futura (documentado, não implementado agora):
-   *   Frequência real em células, escalas cumpridas em ministérios,
-   *   participação em eventos, cursos concluídos, discipulado, evangelismo.
-   *   Basta adicionar um novo componente ao array (mesmo padrão).
+   * Cultos (40%), Células (30%, proxy vínculo), Ministérios (30%, proxy vínculo).
+   * Pesos redistribuídos proporcionalmente entre componentes com dado real.
    */
   async engajamento() {
-    const JANELA_DIAS_CULTOS = 60; // ponto de extensão: mover para Configurações no futuro
+    const JANELA_DIAS_CULTOS = 60;
 
     try {
       const totalAtivosRes = await pool.query(
@@ -331,7 +312,6 @@ const metricsService = {
         };
       }
 
-      // ── Componente: Cultos (presença nos últimos 60 dias) ──
       let cultos = { nome: 'Cultos', peso: 40, estado: 'aguardando_dados', percentual: null };
       try {
         const presencaRes = await pool.query(
@@ -356,7 +336,6 @@ const metricsService = {
         cultos.estado = 'indisponivel';
       }
 
-      // ── Componente: Células (vínculo ativo, proxy) ──
       let celulas = { nome: 'Células', peso: 30, estado: 'aguardando_dados', percentual: null };
       try {
         const vinculadosRes = await pool.query(
@@ -372,7 +351,6 @@ const metricsService = {
         celulas.estado = 'indisponivel';
       }
 
-      // ── Componente: Ministérios (vínculo ativo, proxy) ──
       let ministerios = { nome: 'Ministérios', peso: 30, estado: 'aguardando_dados', percentual: null };
       try {
         const vinculadosRes = await pool.query(
@@ -422,6 +400,109 @@ const metricsService = {
       return {
         valor: null, estado: 'erro', rotulo: '—',
         ultimaAtualizacao: new Date().toISOString(), origem: 'usuarios',
+      };
+    }
+  },
+
+  /**
+   * Status Financeiro (indicador inteligente, Fase 2).
+   * Origem: dizimos_ofertas, despesas | Módulo: Financeiro
+   * Classifica a tendência (margem média dos últimos até 3 meses com dado),
+   * não o resultado de um único mês. Limiares centralizados abaixo.
+   */
+  async statusFinanceiro() {
+    const LIMIAR_SAUDAVEL = 15; // margem média mínima para "Saudável" (%)
+    const LIMIAR_CRITICO = -5;  // margem média abaixo disso é "Crítico" (%)
+
+    try {
+      const { rows } = await pool.query(`
+        SELECT mes, SUM(receita) AS receita, SUM(despesa) AS despesa
+        FROM (
+          SELECT date_trunc('month', data_lancamento) AS mes, valor AS receita, 0 AS despesa
+          FROM dizimos_ofertas
+          WHERE data_lancamento >= date_trunc('month', CURRENT_DATE) - interval '2 months'
+          UNION ALL
+          SELECT date_trunc('month', data_lancamento) AS mes, 0 AS receita, valor AS despesa
+          FROM despesas
+          WHERE data_lancamento >= date_trunc('month', CURRENT_DATE) - interval '2 months'
+        ) t
+        GROUP BY mes
+        ORDER BY mes ASC
+      `);
+
+      if (rows.length === 0) {
+        return {
+          valor: null,
+          estado: 'aguardando_dados',
+          classificacao: 'aguardando_dados',
+          rotulo: 'Histórico insuficiente',
+          mesesConsiderados: 0,
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'financeiro',
+        };
+      }
+
+      const meses = rows.map((r) => {
+        const receita = parseFloat(r.receita);
+        const despesa = parseFloat(r.despesa);
+        const saldo = receita - despesa;
+        let margem;
+        if (receita > 0) {
+          margem = (saldo / receita) * 100;
+        } else if (despesa > 0) {
+          margem = -100;
+        } else {
+          margem = null;
+        }
+        return { mes: r.mes, receita, despesa, saldo, margem };
+      }).filter((m) => m.margem !== null);
+
+      if (meses.length === 0) {
+        return {
+          valor: null,
+          estado: 'aguardando_dados',
+          classificacao: 'aguardando_dados',
+          rotulo: 'Histórico insuficiente',
+          mesesConsiderados: 0,
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'financeiro',
+        };
+      }
+
+      const margemMedia = meses.reduce((s, m) => s + m.margem, 0) / meses.length;
+      const todosNegativos = meses.every((m) => m.saldo < 0);
+
+      let classificacao;
+      if (meses.length === 1) {
+        classificacao = margemMedia >= LIMIAR_SAUDAVEL ? 'saudavel' : 'atencao';
+      } else if (todosNegativos) {
+        classificacao = 'critico';
+      } else if (margemMedia >= LIMIAR_SAUDAVEL) {
+        classificacao = 'saudavel';
+      } else if (margemMedia < LIMIAR_CRITICO) {
+        classificacao = 'critico';
+      } else {
+        classificacao = 'atencao';
+      }
+
+      const ROTULOS = { saudavel: 'Saudável', atencao: 'Atenção', critico: 'Crítico' };
+
+      return {
+        valor: Math.round(margemMedia * 10) / 10,
+        estado: 'real',
+        classificacao,
+        rotulo: ROTULOS[classificacao],
+        mesesConsiderados: meses.length,
+        margemMedia: Math.round(margemMedia * 10) / 10,
+        limiares: { saudavel: LIMIAR_SAUDAVEL, critico: LIMIAR_CRITICO },
+        ultimaAtualizacao: new Date().toISOString(),
+        origem: 'financeiro',
+      };
+    } catch (err) {
+      console.error('[metricsService] Erro ao calcular statusFinanceiro:', err.message);
+      return {
+        valor: null, estado: 'erro', classificacao: 'erro', rotulo: '—',
+        ultimaAtualizacao: new Date().toISOString(), origem: 'financeiro',
       };
     }
   },

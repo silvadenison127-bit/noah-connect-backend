@@ -56,4 +56,14 @@ router.get('/engajamento', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
+router.get('/financeiro-status', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const status = await metricsService.statusFinanceiro();
+    res.json(status);
+  } catch (err) {
+    console.error('[metrics] Erro no financeiro-status:', err);
+    res.status(500).json({ erro: 'Erro ao calcular status financeiro.' });
+  }
+});
+
 module.exports = router;
