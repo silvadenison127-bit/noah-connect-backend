@@ -36,4 +36,14 @@ router.get('/crescimento', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
+router.get('/retencao', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const retencao = await metricsService.retencao();
+    res.json(retencao);
+  } catch (err) {
+    console.error('[metrics] Erro na retencao:', err);
+    res.status(500).json({ erro: 'Erro ao calcular retencao.' });
+  }
+});
+
 module.exports = router;

@@ -234,6 +234,65 @@ const metricsService = {
     }
   },
 
+  /**
+   * Retenção de membros (indicador inteligente, Fase 2).
+   * Origem: usuarios.membro_desde, usuarios.ativo | Módulo: Membros
+   * Regra: dos membros com 180+ dias de cadastro (elegíveis), qual % continua ativo.
+   * Membros com menos de 180 dias ficam em "período de integração" —
+   * não contam nem como retidos nem como perdidos.
+   */
+  async retencao() {
+    try {
+      const { rows } = await pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE membro_desde <= CURRENT_DATE - INTERVAL '180 days') AS elegiveis,
+          COUNT(*) FILTER (
+            WHERE membro_desde <= CURRENT_DATE - INTERVAL '180 days' AND ativo = true
+          ) AS retidos,
+          COUNT(*) FILTER (
+            WHERE membro_desde > CURRENT_DATE - INTERVAL '180 days' AND ativo = true
+          ) AS em_integracao
+        FROM usuarios
+      `);
+
+      const elegiveis = parseInt(rows[0].elegiveis, 10);
+      const retidos = parseInt(rows[0].retidos, 10);
+      const emIntegracao = parseInt(rows[0].em_integracao, 10);
+
+      if (elegiveis === 0) {
+        return {
+          valor: null,
+          estado: 'aguardando_dados',
+          rotulo: 'Histórico insuficiente',
+          elegiveis: 0,
+          retidos: 0,
+          emIntegracao,
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'usuarios',
+        };
+      }
+
+      const percentual = (retidos / elegiveis) * 100;
+
+      return {
+        valor: Math.round(percentual * 10) / 10,
+        estado: 'real',
+        rotulo: `${Math.round(percentual)}%`,
+        elegiveis,
+        retidos,
+        emIntegracao,
+        ultimaAtualizacao: new Date().toISOString(),
+        origem: 'usuarios',
+      };
+    } catch (err) {
+      console.error('[metricsService] Erro ao calcular retencao:', err.message);
+      return {
+        valor: null, estado: 'erro', rotulo: '—',
+        ultimaAtualizacao: new Date().toISOString(), origem: 'usuarios',
+      };
+    }
+  },
+
   async coletarContagens() {
     const [
       membrosAtivos, administradores, lideres, celulas, ministerios,
