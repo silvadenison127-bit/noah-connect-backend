@@ -46,4 +46,14 @@ router.get('/retencao', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
+router.get('/engajamento', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const engajamento = await metricsService.engajamento();
+    res.json(engajamento);
+  } catch (err) {
+    console.error('[metrics] Erro no engajamento:', err);
+    res.status(500).json({ erro: 'Erro ao calcular engajamento.' });
+  }
+});
+
 module.exports = router;
