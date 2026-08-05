@@ -96,4 +96,14 @@ router.get('/frequencia-cultos', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
+router.get('/distribuicao-idades', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const distribuicao = await metricsService.distribuicaoIdades();
+    res.json(distribuicao);
+  } catch (err) {
+    console.error('[metrics] Erro no distribuicao-idades:', err);
+    res.status(500).json({ erro: 'Erro ao calcular distribuicao de idades.' });
+  }
+});
+
 module.exports = router;
