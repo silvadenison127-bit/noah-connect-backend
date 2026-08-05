@@ -43,6 +43,31 @@ router.get('/meus', autenticar, async (req, res) => {
   }
 });
 
+// Resumo de pedidos por status (admin/liderança) — usado no card do Dashboard
+router.get('/resumo', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT status, COUNT(*)::int AS total
+       FROM pedidos_oracao
+       GROUP BY status`
+    );
+
+    const contagens = { em_oracao: 0, respondido: 0, encerrado: 0 };
+    resultado.rows.forEach((r) => {
+      if (contagens[r.status] !== undefined) {
+        contagens[r.status] = r.total;
+      }
+    });
+
+    const total = contagens.em_oracao + contagens.respondido + contagens.encerrado;
+
+    res.json({ total, contagens });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao buscar resumo de pedidos de oração' });
+  }
+});
+
 // Listar todos os pedidos (admin/liderança)
 router.get('/', autenticar, somenteAdmin, async (req, res) => {
   try {
