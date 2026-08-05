@@ -632,6 +632,82 @@ const metricsService = {
     }
   },
 
+  /**
+   * Frequência dos Cultos (indicador visual, Dashboard).
+   * Origem: eventos (tipo='culto') + presencas_culto | Módulo: Cultos
+   * Agrupa os cultos das últimas 8 semanas, calculando o % de presença
+   * de cada culto individualmente (sem forçar grade fixa de 7 dias,
+   * já que a igreja não tem culto todo dia).
+   */
+  async frequenciaCultos() {
+    const SEMANAS = 8;
+    const DIAS = SEMANAS * 7;
+
+    try {
+      const { rows } = await pool.query(`
+        SELECT
+          e.id,
+          e.titulo,
+          e.data_inicio,
+          date_trunc('week', e.data_inicio) AS semana,
+          COUNT(p.id) FILTER (WHERE p.presente = true) AS presentes,
+          COUNT(p.id) AS total_registros
+        FROM eventos e
+        LEFT JOIN presencas_culto p ON p.evento_id = e.id
+        WHERE e.tipo = 'culto'
+          AND e.data_inicio >= CURRENT_DATE - INTERVAL '${DIAS} days'
+          AND e.data_inicio <= CURRENT_DATE
+        GROUP BY e.id, e.titulo, e.data_inicio
+        ORDER BY e.data_inicio ASC
+      `);
+
+      if (rows.length === 0) {
+        return {
+          estado: 'aguardando_dados',
+          rotulo: 'Histórico insuficiente',
+          semanas: [],
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'presencas_culto',
+        };
+      }
+
+      const porSemana = {};
+      rows.forEach((r) => {
+        const chaveSemana = new Date(r.semana).toISOString().slice(0, 10);
+        const totalRegistros = parseInt(r.total_registros, 10);
+        const presentes = parseInt(r.presentes, 10);
+        const percentual = totalRegistros > 0 ? Math.round((presentes / totalRegistros) * 100) : null;
+
+        if (!porSemana[chaveSemana]) {
+          porSemana[chaveSemana] = { semana: chaveSemana, cultos: [] };
+        }
+        porSemana[chaveSemana].cultos.push({
+          id: r.id,
+          titulo: r.titulo,
+          data: r.data_inicio,
+          percentual,
+          semRegistro: totalRegistros === 0,
+        });
+      });
+
+      const semanas = Object.values(porSemana).sort((a, b) => a.semana.localeCompare(b.semana));
+
+      return {
+        estado: 'real',
+        rotulo: `${rows.length} culto(s) em ${semanas.length} semana(s)`,
+        semanas,
+        ultimaAtualizacao: new Date().toISOString(),
+        origem: 'presencas_culto',
+      };
+    } catch (err) {
+      console.error('[metricsService] Erro ao calcular frequenciaCultos:', err.message);
+      return {
+        estado: 'erro', rotulo: '—', semanas: [],
+        ultimaAtualizacao: new Date().toISOString(), origem: 'presencas_culto',
+      };
+    }
+  },
+
   async coletarContagens() {
     const [
       membrosAtivos, administradores, lideres, celulas, ministerios,

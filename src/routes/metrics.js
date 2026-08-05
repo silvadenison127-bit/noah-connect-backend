@@ -86,4 +86,14 @@ router.get('/ia-score', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
+router.get('/frequencia-cultos', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    const frequencia = await metricsService.frequenciaCultos();
+    res.json(frequencia);
+  } catch (err) {
+    console.error('[metrics] Erro no frequencia-cultos:', err);
+    res.status(500).json({ erro: 'Erro ao calcular frequencia de cultos.' });
+  }
+});
+
 module.exports = router;
