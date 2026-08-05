@@ -708,6 +708,79 @@ const metricsService = {
     }
   },
 
+  /**
+   * Distribuição de Idades (indicador visual, Dashboard).
+   * Origem: usuarios.data_nascimento | Módulo: Membros
+   * Só calcula faixas quando há membros com data de nascimento preenchida;
+   * caso contrário, retorna estado "aguardando_dados" (sem inventar percentuais).
+   */
+  async distribuicaoIdades() {
+    const FAIXAS = [
+      { chave: '0_12', label: '0 a 12 anos', min: 0, max: 12 },
+      { chave: '13_18', label: '13 a 18 anos', min: 13, max: 18 },
+      { chave: '19_30', label: '19 a 30 anos', min: 19, max: 30 },
+      { chave: '31_50', label: '31 a 50 anos', min: 31, max: 50 },
+      { chave: '51_mais', label: '51+ anos', min: 51, max: 999 },
+    ];
+
+    try {
+      const totalComDataRes = await pool.query(
+        `SELECT COUNT(*) AS total FROM usuarios WHERE ativo = true AND data_nascimento IS NOT NULL`
+      );
+      const totalComData = parseInt(totalComDataRes.rows[0].total, 10);
+
+      if (totalComData === 0) {
+        return {
+          estado: 'aguardando_dados',
+          rotulo: 'Nenhum membro com data de nascimento cadastrada',
+          faixas: [],
+          totalComData: 0,
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'usuarios',
+        };
+      }
+
+      const { rows } = await pool.query(`
+        SELECT
+          DATE_PART('year', AGE(data_nascimento)) AS idade,
+          COUNT(*) AS total
+        FROM usuarios
+        WHERE ativo = true AND data_nascimento IS NOT NULL
+        GROUP BY idade
+      `);
+
+      const contagens = FAIXAS.reduce((acc, f) => ({ ...acc, [f.chave]: 0 }), {});
+      rows.forEach((r) => {
+        const idade = parseInt(r.idade, 10);
+        const total = parseInt(r.total, 10);
+        const faixa = FAIXAS.find((f) => idade >= f.min && idade <= f.max);
+        if (faixa) contagens[faixa.chave] += total;
+      });
+
+      const faixas = FAIXAS.map((f) => ({
+        chave: f.chave,
+        label: f.label,
+        total: contagens[f.chave],
+        percentual: Math.round((contagens[f.chave] / totalComData) * 100),
+      }));
+
+      return {
+        estado: 'real',
+        rotulo: `${totalComData} membro(s) com data cadastrada`,
+        faixas,
+        totalComData,
+        ultimaAtualizacao: new Date().toISOString(),
+        origem: 'usuarios',
+      };
+    } catch (err) {
+      console.error('[metricsService] Erro ao calcular distribuicaoIdades:', err.message);
+      return {
+        estado: 'erro', rotulo: '—', faixas: [],
+        ultimaAtualizacao: new Date().toISOString(), origem: 'usuarios',
+      };
+    }
+  },
+
   async coletarContagens() {
     const [
       membrosAtivos, administradores, lideres, celulas, ministerios,
