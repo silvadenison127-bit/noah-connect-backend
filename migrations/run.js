@@ -1,4 +1,3 @@
-@'
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -35,4 +34,3 @@ async function run() {
 }
 
 run();
-'@ | Set-Content -Path "migrations/run.js" -Encoding UTF8
