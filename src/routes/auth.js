@@ -38,31 +38,16 @@ async function criarRefreshToken(usuarioId) {
   return tokenBruto;
 }
 
-// Cadastro de novo membro — agora nasce PENDENTE, sem token
-router.post('/cadastro', async (req, res) => {
-  const { nome, email, senha, telefone } = req.body;
-  if (!nome || !email || !senha) {
-    return res.status(400).json({ erro: 'Nome, email e senha são obrigatórios' });
-  }
-  try {
-    const existe = await pool.query('SELECT id FROM usuarios WHERE email = $1', [email]);
-    if (existe.rows.length > 0) {
-      return res.status(409).json({ erro: 'Já existe um usuário com esse email' });
-    }
-    const senhaHash = await bcrypt.hash(senha, 10);
-    await pool.query(
-      `INSERT INTO usuarios (nome, email, senha_hash, telefone, status)
-       VALUES ($1, $2, $3, $4, 'pendente')`,
-      [nome, email, senhaHash, telefone || null]
-    );
-    res.status(201).json({
-      mensagem: 'Cadastro enviado! Sua conta será liberada por um administrador em breve.'
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ erro: 'Erro ao cadastrar usuário' });
-  }
-});
+// ---------------------------------------------------------------------------
+// AUTOCADASTRO PUBLICO REMOVIDO
+//
+// A rota POST /cadastro existia aqui e permitia que qualquer pessoa criasse
+// uma conta (status 'pendente'). Ela foi removida porque a criacao de membros
+// passou a ser exclusiva do administrador, via POST /membros.
+//
+// O frontend nao chamava esta rota. O historico esta no Git, caso seja
+// necessario consultar a implementacao anterior.
+// ---------------------------------------------------------------------------
 
 // Login
 router.post('/login', async (req, res) => {
