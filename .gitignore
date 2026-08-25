@@ -1,8 +1,12 @@
 node_modules
-.env
 *.code-workspace
 
-.env.bak-*
+.env*
+!.env.example
 
 *.bak
 *.bak2
+
+*.dump
+*.sql.gz
+/backups/
