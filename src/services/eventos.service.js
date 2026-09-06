@@ -1,5 +1,5 @@
 /**
- * Publicacao de eventos do painel no Supabase.
+ * Publicacao e atualizacao de eventos do painel no Supabase.
  *
  * O painel (Railway) e a origem administrativa. O aplicativo le
  * Supabase.events. Este servico transporta o evento de um lado ao outro e
@@ -13,7 +13,7 @@
  * eventos.data_inicio e TIMESTAMP sem fuso e guarda o horario local de
  * Curitiba, exatamente como o administrador digitou. Supabase.events.starts_at
  * e timestamptz. A conversao NAO acontece aqui: ela e feita pelo proprio
- * PostgreSQL, no RETURNING do INSERT, com
+ * PostgreSQL, no RETURNING do INSERT ou do UPDATE, com
  *
  *   data_inicio AT TIME ZONE 'America/Sao_Paulo'
  *
@@ -24,9 +24,11 @@
 const { supabaseAdmin } = require('../config/supabase');
 const pool = require('../config/db');
 
-/** Estados possiveis da publicacao, devolvidos ao chamador. */
+/** Estados possiveis da sincronizacao, devolvidos ao chamador. */
 const STATUS = {
   OK: 'SUPABASE_CREATED',
+  ATUALIZADO: 'SUPABASE_UPDATED',
+  NAO_ENCONTRADO: 'SUPABASE_NOT_FOUND',
   NAO_CONFIGURADO: 'SUPABASE_NOT_CONFIGURED',
   FALHA: 'SUPABASE_FAILED',
 };
@@ -41,6 +43,7 @@ const STATUS = {
  * e seguimos, sem inventar uuid.
  */
 async function resolverUuidDoAutor(usuarioId) {
+  if (!usuarioId) return null;
   try {
     const { rows } = await pool.query(
       'SELECT auth_user_id FROM usuarios WHERE id = $1',
@@ -87,7 +90,7 @@ function traduzirEventoDoPainel(evento, uuidAutor) {
 }
 
 /**
- * Publica um evento recem-criado no Supabase.
+ * Publica um evento no Supabase.
  *
  * Devolve `{ uuid, status, erro }` em vez de lancar excecao: o evento ja
  * existe no Railway quando esta funcao roda, e uma indisponibilidade do
@@ -95,7 +98,7 @@ function traduzirEventoDoPainel(evento, uuidAutor) {
  * o que responder ao painel.
  *
  * @param {object} evento linha do Railway, ja com starts_at_utc / ends_at_utc
- * @param {number} usuarioId id do administrador autenticado
+ * @param {number} usuarioId id do administrador AUTOR do evento
  */
 async function publicarEventoNoApp(evento, usuarioId) {
   if (!supabaseAdmin) {
@@ -129,6 +132,63 @@ async function publicarEventoNoApp(evento, usuarioId) {
 }
 
 /**
+ * Reflete no Supabase a edicao de um evento que ja esta publicado.
+ *
+ * created_by NAO e enviado: ele registra quem CRIOU o evento, e uma edicao
+ * feita por outro administrador nao deve reescrever a autoria original.
+ *
+ * updated_at e enviado explicitamente porque o default do schema so vale no
+ * INSERT; sem isso a coluna ficaria congelada na data de criacao.
+ *
+ * Um uuid que nao encontra linha no Supabase e reportado como
+ * SUPABASE_NOT_FOUND, e nao convertido em INSERT silencioso: o vinculo aponta
+ * para algo que sumiu, e isso precisa aparecer no log em vez de ser mascarado
+ * por um registro novo.
+ *
+ * @param {object} evento linha do Railway, ja com starts_at_utc / ends_at_utc
+ * @param {string} uuid   events.id correspondente
+ */
+async function atualizarEventoNoApp(evento, uuid) {
+  if (!supabaseAdmin) {
+    console.warn('[eventos] Supabase nao configurado; edicao ficou apenas no painel.');
+    return {
+      uuid,
+      status: STATUS.NAO_CONFIGURADO,
+      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+    };
+  }
+
+  const { created_by, ...campos } = traduzirEventoDoPainel(evento, null);
+  campos.updated_at = new Date().toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from('events')
+    .update(campos)
+    .eq('id', uuid)
+    .select('id, title, starts_at, is_published, status');
+
+  if (error) {
+    console.error('[eventos] falha ao atualizar no aplicativo:', error.message);
+    return {
+      uuid,
+      status: STATUS.FALHA,
+      erro: 'Nao foi possivel atualizar o evento no aplicativo.',
+    };
+  }
+
+  if (!data || data.length === 0) {
+    console.error(`[eventos] vinculo aponta para evento inexistente no aplicativo: ${uuid}`);
+    return {
+      uuid,
+      status: STATUS.NAO_ENCONTRADO,
+      erro: 'O evento vinculado nao existe mais no aplicativo.',
+    };
+  }
+
+  return { uuid, status: STATUS.ATUALIZADO, erro: null, registro: data[0] };
+}
+
+/**
  * Grava o vinculo no painel. Executado somente apos o INSERT no Supabase.
  *
  * Uma falha aqui deixa o evento publicado no aplicativo sem referencia no
@@ -156,5 +216,6 @@ module.exports = {
   resolverUuidDoAutor,
   traduzirEventoDoPainel,
   publicarEventoNoApp,
+  atualizarEventoNoApp,
   vincularEvento,
 };

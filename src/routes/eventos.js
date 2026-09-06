@@ -4,6 +4,7 @@ const { autenticar, somenteAdmin } = require('../middleware/auth');
 const {
   STATUS,
   publicarEventoNoApp,
+  atualizarEventoNoApp,
   vincularEvento,
 } = require('../services/eventos.service');
 
@@ -113,8 +114,26 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
 });
 
 // Atualizar evento (admin)
+//
+// A edicao precisa chegar ao membro, senao o aplicativo continua mostrando a
+// data ou o local antigos - pior do que nao publicar, porque exibe informacao
+// errada com aparencia de correta.
+//
+// Dois caminhos, decididos pelo vinculo:
+//
+//   supabase_event_id preenchido -> UPDATE no Supabase pelo uuid
+//   supabase_event_id NULL       -> INSERT no Supabase + grava o vinculo
+//
+// O objeto enviado ao Supabase e montado a partir do RETURNING, nunca do
+// req.body: o UPDATE usa COALESCE, entao a requisicao pode ser parcial e
+// req.body sozinho produziria campos nulos no aplicativo.
 router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
   const { titulo, descricao, tipo, data_inicio, data_fim, local } = req.body;
+
+  let evento;
+
+  // Passo 1 - Railway. Se falhar aqui, nada foi alterado e nao chamamos o
+  // Supabase.
   try {
     const resultado = await pool.query(
       `UPDATE eventos SET
@@ -124,15 +143,99 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
         data_inicio = COALESCE($4, data_inicio),
         data_fim = COALESCE($5, data_fim),
         local = COALESCE($6, local)
-       WHERE id = $7 RETURNING *`,
+       WHERE id = $7
+       RETURNING *,
+         (data_inicio AT TIME ZONE 'America/Sao_Paulo') AS starts_at_utc,
+         (data_fim    AT TIME ZONE 'America/Sao_Paulo') AS ends_at_utc`,
       [titulo, descricao, tipo, data_inicio, data_fim, local, req.params.id]
     );
-    if (resultado.rows.length === 0) return res.status(404).json({ erro: 'Evento não encontrado' });
-    res.json(resultado.rows[0]);
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ erro: 'Evento não encontrado' });
+    }
+    evento = resultado.rows[0];
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao atualizar evento' });
+    return res.status(500).json({ erro: 'Erro ao atualizar evento' });
   }
+
+  // A partir daqui o Railway JA FOI ATUALIZADO. Nenhuma falha adiante pode ser
+  // reportada como "erro ao atualizar evento".
+  const { starts_at_utc, ends_at_utc, ...eventoPainel } = evento;
+
+  // CASO 1 - evento ja publicado: reflete a edicao.
+  if (evento.supabase_event_id) {
+    const sincronizacao = await atualizarEventoNoApp(evento, evento.supabase_event_id);
+
+    if (sincronizacao.status !== STATUS.ATUALIZADO) {
+      console.error(
+        `[eventos] RAILWAY_UPDATED id=${evento.id} / ${sincronizacao.status}: ${sincronizacao.erro}`
+      );
+      return res.json({
+        ...eventoPainel,
+        integracao: {
+          status: `RAILWAY_UPDATED / ${sincronizacao.status}`,
+          publicado_no_app: false,
+          aviso: sincronizacao.erro,
+        },
+      });
+    }
+
+    return res.json({
+      ...eventoPainel,
+      integracao: {
+        status: 'RAILWAY_UPDATED / SUPABASE_UPDATED',
+        publicado_no_app: true,
+        aviso: null,
+      },
+    });
+  }
+
+  // CASO 2 - evento sem vinculo: publica agora e grava a referencia.
+  //
+  // criado_por, e nao req.usuario.id: created_by registra quem CRIOU o evento.
+  // Quem esta editando pode ser outro administrador.
+  const publicacao = await publicarEventoNoApp(evento, evento.criado_por);
+
+  if (publicacao.status !== STATUS.OK) {
+    console.error(
+      `[eventos] RAILWAY_UPDATED id=${evento.id} / ${publicacao.status}: ${publicacao.erro}`
+    );
+    return res.json({
+      ...eventoPainel,
+      integracao: {
+        status: `RAILWAY_UPDATED / ${publicacao.status}`,
+        publicado_no_app: false,
+        aviso: publicacao.erro,
+      },
+    });
+  }
+
+  const vinculo = await vincularEvento(evento.id, publicacao.uuid);
+
+  if (!vinculo.ok) {
+    console.error(
+      `[eventos] RAILWAY_UPDATED id=${evento.id} / SUPABASE_CREATED uuid=${publicacao.uuid} / LINK_FAILED: ${vinculo.erro}`
+    );
+    return res.json({
+      ...eventoPainel,
+      supabase_event_id: publicacao.uuid,
+      integracao: {
+        status: 'RAILWAY_UPDATED / SUPABASE_CREATED / LINK_FAILED',
+        publicado_no_app: true,
+        aviso: vinculo.erro,
+      },
+    });
+  }
+
+  res.json({
+    ...eventoPainel,
+    supabase_event_id: publicacao.uuid,
+    integracao: {
+      status: 'RAILWAY_UPDATED / SUPABASE_CREATED / LINKED',
+      publicado_no_app: true,
+      aviso: null,
+    },
+  });
 });
 
 // Remover evento (admin)
