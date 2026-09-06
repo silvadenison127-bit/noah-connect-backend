@@ -1,5 +1,5 @@
 /**
- * Publicacao e atualizacao de eventos do painel no Supabase.
+ * Publicacao, atualizacao e cancelamento de eventos do painel no Supabase.
  *
  * O painel (Railway) e a origem administrativa. O aplicativo le
  * Supabase.events. Este servico transporta o evento de um lado ao outro e
@@ -28,6 +28,7 @@ const pool = require('../config/db');
 const STATUS = {
   OK: 'SUPABASE_CREATED',
   ATUALIZADO: 'SUPABASE_UPDATED',
+  CANCELADO: 'SUPABASE_CANCELED',
   NAO_ENCONTRADO: 'SUPABASE_NOT_FOUND',
   NAO_CONFIGURADO: 'SUPABASE_NOT_CONFIGURED',
   FALHA: 'SUPABASE_FAILED',
@@ -177,7 +178,10 @@ async function atualizarEventoNoApp(evento, uuid) {
   }
 
   if (!data || data.length === 0) {
-    console.error(`[eventos] vinculo aponta para evento inexistente no aplicativo: ${uuid}`);
+    console.error(
+      `[eventos] vinculo aponta para evento inexistente no aplicativo: ${uuid} ` +
+      `(projeto ${(process.env.SUPABASE_URL || '').slice(8, 14)})`
+    );
     return {
       uuid,
       status: STATUS.NAO_ENCONTRADO,
@@ -186,6 +190,58 @@ async function atualizarEventoNoApp(evento, uuid) {
   }
 
   return { uuid, status: STATUS.ATUALIZADO, erro: null, registro: data[0] };
+}
+
+/**
+ * Cancela no aplicativo um evento removido do painel.
+ *
+ * O registro NAO e apagado do Supabase, por decisao do dono do projeto: um
+ * evento cancelado e informacao, e apagar destruiria o registro de que ele
+ * existiu. O aplicativo ja filtra `.neq('status', 'canceled')`, entao marcar
+ * o status basta para que o membro deixe de ve-lo.
+ *
+ * Efeito colateral util: a operacao e reversivel. Um DELETE fisico nao seria.
+ *
+ * @param {string} uuid events.id correspondente
+ */
+async function cancelarEventoNoApp(uuid) {
+  if (!supabaseAdmin) {
+    console.warn('[eventos] Supabase nao configurado; cancelamento ficou apenas no painel.');
+    return {
+      uuid,
+      status: STATUS.NAO_CONFIGURADO,
+      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+    };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('events')
+    .update({ status: 'canceled', updated_at: new Date().toISOString() })
+    .eq('id', uuid)
+    .select('id, title, status');
+
+  if (error) {
+    console.error('[eventos] falha ao cancelar no aplicativo:', error.message);
+    return {
+      uuid,
+      status: STATUS.FALHA,
+      erro: 'Nao foi possivel cancelar o evento no aplicativo.',
+    };
+  }
+
+  if (!data || data.length === 0) {
+    console.error(
+      `[eventos] vinculo aponta para evento inexistente no aplicativo: ${uuid} ` +
+      `(projeto ${(process.env.SUPABASE_URL || '').slice(8, 14)})`
+    );
+    return {
+      uuid,
+      status: STATUS.NAO_ENCONTRADO,
+      erro: 'O evento vinculado nao existe mais no aplicativo.',
+    };
+  }
+
+  return { uuid, status: STATUS.CANCELADO, erro: null, registro: data[0] };
 }
 
 /**
@@ -217,5 +273,6 @@ module.exports = {
   traduzirEventoDoPainel,
   publicarEventoNoApp,
   atualizarEventoNoApp,
+  cancelarEventoNoApp,
   vincularEvento,
 };

@@ -5,6 +5,7 @@ const {
   STATUS,
   publicarEventoNoApp,
   atualizarEventoNoApp,
+  cancelarEventoNoApp,
   vincularEvento,
 } = require('../services/eventos.service');
 
@@ -239,14 +240,73 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
 });
 
 // Remover evento (admin)
+//
+// O evento sai do painel e e CANCELADO no aplicativo, nao apagado. Decisao do
+// dono do projeto: um evento cancelado e informacao, e apagar destruiria o
+// registro de que ele existiu. O aplicativo ja filtra
+// `.neq('status', 'canceled')`, entao marcar o status basta para o membro
+// deixar de ve-lo - e a operacao continua reversivel.
+//
+// O DELETE usa RETURNING para capturar o supabase_event_id ANTES de a linha
+// sumir. Sem isso, perderiamos a referencia e o evento ficaria orfao no
+// aplicativo, visivel para sempre.
 router.delete('/:id', autenticar, somenteAdmin, async (req, res) => {
+  let removido;
+
+  // Passo 1 - Railway.
   try {
-    await pool.query('DELETE FROM eventos WHERE id = $1', [req.params.id]);
-    res.status(204).send();
+    const resultado = await pool.query(
+      'DELETE FROM eventos WHERE id = $1 RETURNING id, titulo, supabase_event_id',
+      [req.params.id]
+    );
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ erro: 'Evento não encontrado' });
+    }
+    removido = resultado.rows[0];
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao remover evento' });
+    return res.status(500).json({ erro: 'Erro ao remover evento' });
   }
+
+  // Evento que nunca foi publicado: nao ha nada a cancelar no aplicativo.
+  if (!removido.supabase_event_id) {
+    return res.json({
+      id: removido.id,
+      integracao: {
+        status: 'RAILWAY_DELETED / SEM_VINCULO',
+        removido_do_app: false,
+        aviso: null,
+      },
+    });
+  }
+
+  // Passo 2 - Supabase.
+  const cancelamento = await cancelarEventoNoApp(removido.supabase_event_id);
+
+  if (cancelamento.status !== STATUS.CANCELADO) {
+    console.error(
+      `[eventos] RAILWAY_DELETED id=${removido.id} uuid=${removido.supabase_event_id} / ${cancelamento.status}: ${cancelamento.erro}`
+    );
+    return res.json({
+      id: removido.id,
+      supabase_event_id: removido.supabase_event_id,
+      integracao: {
+        status: `RAILWAY_DELETED / ${cancelamento.status}`,
+        removido_do_app: false,
+        aviso: cancelamento.erro,
+      },
+    });
+  }
+
+  res.json({
+    id: removido.id,
+    supabase_event_id: removido.supabase_event_id,
+    integracao: {
+      status: 'RAILWAY_DELETED / SUPABASE_CANCELED',
+      removido_do_app: true,
+      aviso: null,
+    },
+  });
 });
 
 module.exports = router;
