@@ -1,0 +1,34 @@
+-- ============================================
+-- MIGRATION 009 - VINCULO DE EVENTOS COM O SUPABASE
+-- ============================================
+-- Contexto: a coluna abaixo ja existe em producao (Railway), criada
+-- manualmente via console SQL em 04/09/2026 durante a implementacao da
+-- sincronizacao de eventos. Nunca foi versionada, entao o repositorio
+-- ficou fora de sincronia com o schema real - mesmo problema que a
+-- migration 006 corrigiu para outras sete tabelas.
+--
+-- Esta migration e IDEMPOTENTE e SEGURA para producao: usa
+-- "ADD COLUMN IF NOT EXISTS", entao em producao (onde a coluna ja
+-- existe) ela nao faz nada - zero risco de tocar em dado real.
+-- Em qualquer ambiente novo (staging, disaster recovery, clone local),
+-- ela cria a coluna do zero.
+--
+-- PARA QUE SERVE
+-- eventos.supabase_event_id guarda o uuid do registro correspondente em
+-- Supabase.events. Sem ele o painel nao consegue atualizar nem cancelar
+-- no aplicativo um evento que ja publicou.
+--
+-- Sem FOREIGN KEY: events vive em outro servidor (Supabase), e FK entre
+-- bancos distintos e impossivel. A integridade fica a cargo da
+-- aplicacao, mesmo criterio ja adotado na migration 007 para
+-- usuarios.auth_user_id.
+--
+-- Sem indice: a coluna e lida sempre pelo id do proprio evento
+-- (SELECT ... WHERE id = $1), nunca pesquisada pelo uuid. Um indice
+-- aqui custaria escrita sem beneficio de leitura.
+--
+-- ROLLBACK
+--   ALTER TABLE eventos DROP COLUMN supabase_event_id;
+-- ============================================
+
+ALTER TABLE eventos ADD COLUMN IF NOT EXISTS supabase_event_id uuid;
