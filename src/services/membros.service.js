@@ -2,6 +2,7 @@
 
 const { withTransaction } = require('../lib/db-transaction');
 const { registrarAuditoria } = require('./auditoria.service');
+const { supabaseAdmin } = require('../config/supabase');
 
 const TABELAS_PESSOAIS = [
   { tabela: 'refresh_tokens',     coluna: 'usuario_id' },
@@ -52,6 +53,54 @@ async function coletarImpacto(client, idsLimpos) {
   return impacto;
 }
 
+/**
+ * Remove as contas do Supabase Auth. Chamada por quem consome este servico,
+ * SEMPRE depois de a transacao do Railway ter confirmado.
+ *
+ * A ordem importa. Se o Supabase falhar, sobra uma conta orfa no Auth: a pessoa
+ * entraria no aplicativo mas nao existiria no painel -- ruim, porem detectavel
+ * pelo log e corrigivel a mao. O inverso seria pior: o membro sumiria do
+ * aplicativo e continuaria no painel, dando a falsa impressao de que ainda tem
+ * acesso.
+ *
+ * Nao lanca. A exclusao no Railway ja foi confirmada, e reverter uma transacao
+ * concluida seria pior do que registrar a inconsistencia.
+ *
+ * O CASCADE das chaves estrangeiras remove `profiles` e `members` sozinho.
+ */
+async function removerContasDoAuth(authIds) {
+  if (!Array.isArray(authIds) || authIds.length === 0) {
+    return { removidas: 0, falhas: [] };
+  }
+
+  if (!supabaseAdmin) {
+    console.error(
+      '[membros] Supabase nao configurado. Contas NAO removidas do Auth:',
+      authIds.join(', ')
+    );
+    return { removidas: 0, falhas: authIds };
+  }
+
+  const falhas = [];
+  let removidas = 0;
+
+  for (const authId of authIds) {
+    try {
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(authId);
+      if (error) throw error;
+      removidas += 1;
+    } catch (err) {
+      falhas.push(authId);
+      console.error(
+        `[membros] INCIDENTE: conta orfa no Supabase Auth apos exclusao no Railway: ${authId}`,
+        err
+      );
+    }
+  }
+
+  return { removidas, falhas };
+}
+
 async function excluirMembros({ ids, confirmado, executor, ip }) {
   if (confirmado !== true) {
     const err = new Error('Confirmacao explicita obrigatoria.');
@@ -92,11 +141,14 @@ async function excluirMembros({ ids, confirmado, executor, ip }) {
         [idsLimpos]
       );
     }
+    // O `auth_user_id` e capturado aqui porque depois do DELETE a informacao
+    // some -- e sem ela nao ha como remover a conta do aplicativo.
     const del = await client.query(
-      `DELETE FROM usuarios WHERE id::text = ANY($1::text[]) RETURNING id`,
+      `DELETE FROM usuarios WHERE id::text = ANY($1::text[]) RETURNING id, auth_user_id`,
       [idsLimpos]
     );
     const idsExcluidos = del.rows.map((r) => r.id);
+    const authIds = del.rows.map((r) => r.auth_user_id).filter(Boolean);
     const auditoria_id = await registrarAuditoria(client, {
       executor_id:   executor.id,
       executor_nome: executor.nome,
@@ -106,7 +158,7 @@ async function excluirMembros({ ids, confirmado, executor, ip }) {
       resultado:     `${idsExcluidos.length} usuario(s) excluido(s)`,
       ip,
     });
-    return { excluidos: idsExcluidos.length, ids: idsExcluidos, impacto, auditoria_id };
+    return { excluidos: idsExcluidos.length, ids: idsExcluidos, impacto, auditoria_id, authIds };
   });
 }
 
@@ -114,4 +166,4 @@ async function excluirMembro({ id, executor, ip }) {
   return excluirMembros({ ids: [String(id)], confirmado: true, executor, ip });
 }
 
-module.exports = { excluirMembros, excluirMembro };
+module.exports = { excluirMembros, excluirMembro, removerContasDoAuth };
