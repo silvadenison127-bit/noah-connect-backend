@@ -9,7 +9,7 @@ const { supabaseAdmin, supabaseConfigurado } = require('../config/supabase');
 
 const router = express.Router();
 
-const INSERT_USUARIO = "INSERT INTO usuarios (nome, email, senha_hash, telefone, cpf, tipo, status, auth_user_id) VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'membro'), 'aprovado', $7) RETURNING id, nome, email, telefone, cpf, tipo, ativo, membro_desde, status, auth_user_id";
+const INSERT_USUARIO = "INSERT INTO usuarios (nome, email, senha_hash, telefone, cpf, tipo, status, auth_user_id, data_nascimento) VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'membro'), 'aprovado', $7, $8) RETURNING id, nome, email, telefone, cpf, tipo, ativo, membro_desde, status, auth_user_id, data_nascimento";
 
 router.get('/', autenticar, somenteAdmin, async (req, res) => {
   try {
@@ -33,7 +33,7 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
  * (Auth criado, INSERT no Railway falhou) e coberta por compensacao no catch.
  */
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
-  const { nome, email, telefone, tipo, senha, cpf } = req.body;
+  const { nome, email, telefone, tipo, senha, cpf, data_nascimento } = req.body;
   if (!nome || !email || !senha) {
     return res.status(400).json({ erro: 'Nome, email e senha sao obrigatorios.' });
   }
@@ -52,6 +52,11 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
   const emailNormalizado = String(email).trim().toLowerCase();
   const nomeLimpo = String(nome).trim();
   const documento = cpf ? String(cpf).replace(/\D/g, '') : null;
+
+  // O campo `date` do navegador entrega no formato ISO (YYYY-MM-DD), que e o
+  // que o Postgres e o trigger do Supabase esperam. String vazia vira null para
+  // nao quebrar a coluna do tipo `date`.
+  const nascimento = data_nascimento ? String(data_nascimento).trim() || null : null;
 
   let authUserId = null;
 
@@ -74,7 +79,7 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
         full_name: nomeLimpo,
         phone: telefone || null,
         document: documento,
-        birth_date: null,
+        birth_date: nascimento,
       },
     });
 
@@ -107,6 +112,7 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
       documento,
       tipo,
       authUserId,
+      nascimento,
     ]);
 
     return res.status(201).json(r.rows[0]);
