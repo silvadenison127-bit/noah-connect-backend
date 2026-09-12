@@ -1,6 +1,11 @@
 const express = require('express');
 const pool = require('../config/db');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
+const {
+  publicarCelulaNoApp,
+  atualizarCelulaNoApp,
+  desativarCelulaNoApp,
+} = require('../services/celulas.service');
 const router = express.Router();
 
 // Listar células com líder e contagem de membros
@@ -20,7 +25,14 @@ router.get('/', autenticar, async (req, res) => {
   }
 });
 
-// Criar célula (admin)
+/**
+ * Criar célula (admin).
+ *
+ * A célula nasce no Railway e em seguida é publicada no Supabase, que é de
+ * onde o aplicativo lê. Se a publicação falhar, a célula continua criada no
+ * painel e o aviso sobe junto com a resposta -- nunca em silêncio, senão o
+ * pastor cadastraria algo que nenhum membro veria.
+ */
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
   const { nome, lider_id, dia_semana, horario, endereco } = req.body;
   if (!nome) {
@@ -33,14 +45,34 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
        RETURNING *`,
       [nome, lider_id || null, dia_semana || null, horario || null, endereco || null]
     );
-    res.status(201).json(resultado.rows[0]);
+
+    const celula = resultado.rows[0];
+    const publicacao = await publicarCelulaNoApp(celula);
+
+    if (publicacao.uuid) {
+      await pool.query('UPDATE celulas SET supabase_cell_id = $1 WHERE id = $2', [
+        publicacao.uuid,
+        celula.id,
+      ]);
+      celula.supabase_cell_id = publicacao.uuid;
+    }
+
+    res.status(201).json(
+      publicacao.erro ? { ...celula, aviso: publicacao.erro } : celula
+    );
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao criar célula' });
   }
 });
 
-// Atualizar célula (admin)
+/**
+ * Atualizar célula (admin).
+ *
+ * A edição é refletida no Supabase quando existe vínculo. Sem vínculo a
+ * célula nunca chegou ao aplicativo: neste caso ela é publicada agora, em vez
+ * de continuar invisível para sempre.
+ */
 router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
   const { nome, lider_id, dia_semana, horario, endereco } = req.body;
   try {
@@ -55,17 +87,61 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
       [nome, lider_id, dia_semana, horario, endereco, req.params.id]
     );
     if (resultado.rows.length === 0) return res.status(404).json({ erro: 'Célula não encontrada' });
-    res.json(resultado.rows[0]);
+
+    const celula = resultado.rows[0];
+    let aviso = null;
+
+    if (celula.supabase_cell_id) {
+      const r = await atualizarCelulaNoApp(celula.supabase_cell_id, celula);
+      aviso = r.erro;
+    } else {
+      const publicacao = await publicarCelulaNoApp(celula);
+      if (publicacao.uuid) {
+        await pool.query('UPDATE celulas SET supabase_cell_id = $1 WHERE id = $2', [
+          publicacao.uuid,
+          celula.id,
+        ]);
+        celula.supabase_cell_id = publicacao.uuid;
+      }
+      aviso = publicacao.erro;
+    }
+
+    res.json(aviso ? { ...celula, aviso } : celula);
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao atualizar célula' });
   }
 });
 
-// Remover célula (admin)
+/**
+ * Remover célula (admin).
+ *
+ * No Railway a linha é apagada; no Supabase a célula é apenas desativada. O
+ * aplicativo filtra por `is_active`, então desativar já tira a célula da vista
+ * do membro sem destruir vínculos que possam existir do lado de lá.
+ *
+ * O uuid é capturado ANTES do DELETE, via RETURNING: depois de apagada a linha
+ * não haveria como descobrir qual célula desativar no aplicativo.
+ */
 router.delete('/:id', autenticar, somenteAdmin, async (req, res) => {
   try {
-    await pool.query('DELETE FROM celulas WHERE id = $1', [req.params.id]);
+    const resultado = await pool.query(
+      'DELETE FROM celulas WHERE id = $1 RETURNING supabase_cell_id',
+      [req.params.id]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ erro: 'Célula não encontrada' });
+    }
+
+    const uuid = resultado.rows[0].supabase_cell_id;
+    if (uuid) {
+      const r = await desativarCelulaNoApp(uuid);
+      if (r.erro) {
+        console.error('[celulas] célula removida do painel, mas segue ativa no aplicativo:', r.erro);
+      }
+    }
+
     res.status(204).send();
   } catch (err) {
     console.error(err);
