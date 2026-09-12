@@ -1,6 +1,11 @@
 const express = require('express');
 const pool = require('../config/db');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
+const {
+  buscarDoacoesDoApp,
+  confirmarDoacaoDoApp,
+  cancelarDoacaoDoApp,
+} = require('../services/doacoes.service');
 const router = express.Router();
 
 // Listar lançamentos (admin) - com filtro opcional por mês
@@ -27,6 +32,35 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao buscar lançamentos' });
   }
+});
+
+/**
+ * Doações feitas pelo aplicativo (admin).
+ *
+ * Lista separada dos lançamentos manuais: `dizimos_ofertas` é o que a
+ * tesouraria registra à mão, esta é a cobrança digital com ciclo de pagamento
+ * próprio. Juntar as duas distorceria o controle financeiro.
+ *
+ * O aviso de indisponibilidade sobe no cabeçalho, nunca em silêncio.
+ */
+router.get('/app', autenticar, somenteAdmin, async (req, res) => {
+  const { doacoes, aviso } = await buscarDoacoesDoApp();
+  if (aviso) res.set('X-Aviso-Parcial', encodeURIComponent(aviso));
+  res.json(doacoes);
+});
+
+// Confirmar recebimento de uma doação do aplicativo (admin)
+router.put('/app/:id/confirmar', autenticar, somenteAdmin, async (req, res) => {
+  const r = await confirmarDoacaoDoApp(req.params.id);
+  if (r.erro) return res.status(r.status).json({ erro: r.erro });
+  res.json(r.doacao);
+});
+
+// Cancelar uma doação do aplicativo (admin)
+router.put('/app/:id/cancelar', autenticar, somenteAdmin, async (req, res) => {
+  const r = await cancelarDoacaoDoApp(req.params.id);
+  if (r.erro) return res.status(r.status).json({ erro: r.erro });
+  res.json(r.doacao);
 });
 
 // Resumo (totais) - usado no card do Dashboard
