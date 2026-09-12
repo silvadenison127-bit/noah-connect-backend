@@ -9,6 +9,7 @@ const {
   resolverUuidDoPastor,
   responderPedidoDoApp,
   alterarStatusDoPedidoDoApp,
+  excluirPedidoDoApp,
 } = require('../services/oracao.service');
 const router = express.Router();
 
@@ -199,6 +200,39 @@ router.put('/:id/responder', autenticar, somenteAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao responder pedido' });
+  }
+});
+
+/**
+ * Excluir um pedido de oracao (admin).
+ *
+ * O id carrega a origem: com prefixo `sb:` o pedido vive no Supabase, sem
+ * prefixo vive no Railway. Cada caso vai para o seu banco -- nao ha exclusao
+ * cruzada nem tentativa nos dois.
+ *
+ * A exclusao e definitiva. A confirmacao acontece na tela, antes da chamada.
+ */
+router.delete('/:id', autenticar, somenteAdmin, async (req, res) => {
+  const alvo = interpretarId(req.params.id);
+
+  if (alvo.origem === 'aplicativo') {
+    const r = await excluirPedidoDoApp(alvo.id);
+    if (r.erro) return res.status(r.status).json({ erro: r.erro });
+    return res.status(204).send();
+  }
+
+  try {
+    const resultado = await pool.query(
+      'DELETE FROM pedidos_oracao WHERE id = $1 RETURNING id',
+      [alvo.id],
+    );
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ erro: 'Pedido nao encontrado' });
+    }
+    res.status(204).send();
+  } catch (err) {
+    console.error('[oracao] falha ao excluir pedido do painel:', err);
+    res.status(500).json({ erro: 'Erro ao excluir pedido' });
   }
 });
 

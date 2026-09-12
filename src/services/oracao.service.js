@@ -230,6 +230,42 @@ async function alterarStatusDoPedidoDoApp(uuidPedido, statusDoPainel) {
   return { pedido: traduzirPedidoDoApp(data), status: 200, erro: null };
 }
 
+/**
+ * Exclui um pedido criado pelo aplicativo.
+ *
+ * A exclusao e definitiva e nao deixa copia: pedido de oracao e conteudo
+ * pessoal do membro, e guardar o que o pastor decidiu apagar seria reter algo
+ * que ninguem pediu para reter.
+ *
+ * Devolve 404 quando o uuid nao existe, para o painel avisar em vez de
+ * relatar sucesso sobre um registro que nunca foi apagado.
+ */
+async function excluirPedidoDoApp(uuidPedido) {
+  if (!supabaseAdmin) {
+    return {
+      status: 502,
+      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+    };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('prayer_requests')
+    .delete()
+    .eq('id', uuidPedido)
+    .select('id')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[oracao] falha ao excluir pedido do aplicativo:', error.message);
+    return { status: 502, erro: 'Nao foi possivel excluir o pedido no aplicativo.' };
+  }
+  if (!data) {
+    return { status: 404, erro: 'Pedido nao encontrado' };
+  }
+
+  return { status: 200, erro: null };
+}
+
 module.exports = {
   PREFIXO_APP,
   STATUS_APP_PARA_PAINEL,
@@ -242,4 +278,5 @@ module.exports = {
   resolverUuidDoPastor,
   responderPedidoDoApp,
   alterarStatusDoPedidoDoApp,
+  excluirPedidoDoApp,
 };
