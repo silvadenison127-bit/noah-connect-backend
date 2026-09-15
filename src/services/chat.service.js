@@ -76,7 +76,7 @@ async function listarConversas(status = 'open') {
   const roomIds = salas.map((s) => s.id);
 
   const [membros, naoLidas] = await Promise.all([
-    supabaseAdmin.from('members').select('id, full_name').in('id', memberIds),
+    supabaseAdmin.from('members').select('id, profiles(full_name)').in('id', memberIds),
     supabaseAdmin
       .from('chat_messages')
       .select('room_id')
@@ -88,7 +88,9 @@ async function listarConversas(status = 'open') {
   if (membros.error) propagar(membros.error);
   if (naoLidas.error) propagar(naoLidas.error);
 
-  const nomePorMembro = new Map((membros.data || []).map((m) => [m.id, m.full_name]));
+  // O nome nao esta em members: a tabela guarda profile_id e o nome vive em
+  // profiles. O select aninhado traz o campo como m.profiles.full_name.
+  const nomePorMembro = new Map((membros.data || []).map((m) => [m.id, m.profiles?.full_name]));
   const contagem = new Map();
   for (const linha of naoLidas.data || []) {
     contagem.set(linha.room_id, (contagem.get(linha.room_id) || 0) + 1);
