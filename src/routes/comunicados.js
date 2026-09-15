@@ -1,6 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const pool = require('../config/db');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
+const comunicadosService = require('../services/comunicados.service');
 const router = express.Router();
 
 // Listar comunicados relevantes para o usuário logado (todos + suas células/ministérios)
@@ -90,7 +91,15 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
        RETURNING *`,
       [titulo, mensagem, publico_alvo || 'todos', publico_alvo === 'todos' ? null : alvo_id, req.usuario.id]
     );
-    res.status(201).json(resultado.rows[0]);
+    const comunicado = resultado.rows[0];
+
+    const envio = await comunicadosService.publicarComunicado(comunicado);
+    if (envio.status === comunicadosService.STATUS.OK) {
+      await pool.query('UPDATE comunicados SET enviado_app_em = now() WHERE id = $1', [comunicado.id]);
+      comunicado.enviado_app_em = new Date().toISOString();
+    }
+
+    res.status(201).json({ ...comunicado, app: envio.status });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao criar comunicado' });
@@ -100,6 +109,7 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
 // Remover comunicado (admin)
 router.delete('/:id', autenticar, somenteAdmin, async (req, res) => {
   try {
+    await comunicadosService.removerComunicadoDoApp(req.params.id);
     await pool.query('DELETE FROM comunicados WHERE id = $1', [req.params.id]);
     res.status(204).send();
   } catch (err) {
