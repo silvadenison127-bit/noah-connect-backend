@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
@@ -23,7 +23,8 @@ const presencasCursosRoutes = require('./routes/presencasCursos');
 const iaNoahRoutes = require('./routes/iaNoah');
 const metricsRoutes = require('./routes/metrics'); // camada oficial de métricas
 const searchRoutes = require('./routes/search'); // NOVO — Pesquisa Global
-const aoVivoRoutes = require('./routes/aoVivo'); // NOVO — Transmissoes ao vivo (Supabase)
+const aoVivoRoutes = require('./routes/aoVivo'); // NOVO - Transmissoes ao vivo (Supabase)
+const chatRoutes = require('./routes/chat'); // NOVO - atendimento do chat pelo painel
 
 const app = express();
 app.use(cors());
@@ -53,7 +54,8 @@ app.use('/api/presencas-cursos', presencasCursosRoutes);
 app.use('/api/ia-noah', iaNoahRoutes);
 app.use('/api/metrics', metricsRoutes); // expõe /api/metrics/*
 app.use('/api/search', searchRoutes); // NOVO — expõe /api/search?q=texto
-app.use('/api/ao-vivo', aoVivoRoutes); // NOVO — expõe /api/ao-vivo/*
+app.use('/api/ao-vivo', aoVivoRoutes); // NOVO - expoe /api/ao-vivo/*
+app.use('/api/chat', chatRoutes); // NOVO - expoe /api/chat/*
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
