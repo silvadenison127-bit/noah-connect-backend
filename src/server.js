@@ -25,6 +25,7 @@ const metricsRoutes = require('./routes/metrics'); // camada oficial de métrica
 const searchRoutes = require('./routes/search'); // NOVO — Pesquisa Global
 const aoVivoRoutes = require('./routes/aoVivo'); // NOVO - Transmissoes ao vivo (Supabase)
 const chatRoutes = require('./routes/chat'); // NOVO - atendimento do chat pelo painel
+const igrejaRoutes = require('./routes/igreja'); // NOVO - dados da igreja e horarios (Supabase)
 
 const app = express();
 app.use(cors());
@@ -56,6 +57,7 @@ app.use('/api/metrics', metricsRoutes); // expõe /api/metrics/*
 app.use('/api/search', searchRoutes); // NOVO — expõe /api/search?q=texto
 app.use('/api/ao-vivo', aoVivoRoutes); // NOVO - expoe /api/ao-vivo/*
 app.use('/api/chat', chatRoutes); // NOVO - expoe /api/chat/*
+app.use('/api/igreja', igrejaRoutes); // NOVO - expoe /api/igreja/*
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
