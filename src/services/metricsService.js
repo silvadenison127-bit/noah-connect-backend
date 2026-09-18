@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+﻿const pool = require('../config/db');
 const securityService = require('./securityService');
 
 function kpi(valor, estado, origem) {
@@ -193,6 +193,22 @@ const metricsService = {
           rotulo: 'Primeiro crescimento registrado',
           mesAtual: totalAtual,
           mediaHistorica,
+          mesesConsiderados: mesesHistoricos.length,
+          ultimaAtualizacao: new Date().toISOString(),
+          origem: 'usuarios',
+        };
+      }
+
+      // Base pequena demais: com poucos meses de historico ou menos de 2
+      // membros por mes, um unico cadastro a mais ou a menos oscila o
+      // indicador em 100%. Nesse caso o percentual engana mais do que informa.
+      if (mesesHistoricos.length < 3 || mediaHistorica < 2) {
+        return {
+          valor: null,
+          estado: 'aguardando_dados',
+          rotulo: 'Histórico insuficiente',
+          mesAtual: totalAtual,
+          mediaHistorica: Math.round(mediaHistorica * 10) / 10,
           mesesConsiderados: mesesHistoricos.length,
           ultimaAtualizacao: new Date().toISOString(),
           origem: 'usuarios',
