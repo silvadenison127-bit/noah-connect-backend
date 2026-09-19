@@ -1,4 +1,4 @@
-/**
+﻿/**
  * healthScoreEngine.js
  *
  * Responsabilidade única: calcular os indicadores de "Saúde da Igreja"
@@ -26,6 +26,16 @@ async function calcularFrequenciaCultos(pool) {
        AND e.tipo = 'culto'
        AND e.data_inicio >= NOW() - interval '${config.janelas.frequenciaCultosDias} days'`
   );
+
+  // Sem culto no periodo nao ha frequencia a medir (ver nota em celulas).
+  const cultosRes = await pool.query(
+    `SELECT COUNT(1) AS total FROM eventos
+     WHERE tipo = 'culto'
+       AND data_inicio >= NOW() - interval '${config.janelas.frequenciaCultosDias} days'`
+  );
+  if (parseInt(cultosRes.rows[0].total, 10) === 0) {
+    return { percentual: null, label: 'Sem cultos no período' };
+  }
   const presentes = parseInt(presentesRes.rows[0].total, 10);
   const percentual = Math.round((presentes / totalAtivos) * 1000) / 10;
   return { percentual, label: `${percentual}%` };
@@ -39,6 +49,13 @@ async function calcularParticipacaoCelulas(pool) {
   const vinculadosRes = await pool.query(
     `SELECT COUNT(DISTINCT usuario_id) AS total FROM membros_celula`
   );
+
+  // Sem nenhuma celula cadastrada nao ha o que medir: 0% aqui seria lido
+  // como se ninguem participasse, quando o modulo ainda nao foi usado.
+  const celulasRes = await pool.query(`SELECT COUNT(1) AS total FROM celulas`);
+  if (parseInt(celulasRes.rows[0].total, 10) === 0) {
+    return { percentual: null, label: 'Sem células cadastradas' };
+  }
   const vinculados = parseInt(vinculadosRes.rows[0].total, 10);
   const percentual = Math.round((vinculados / totalAtivos) * 1000) / 10;
   return { percentual, label: `${percentual}%` };
@@ -52,6 +69,12 @@ async function calcularParticipacaoMinisterios(pool) {
   const vinculadosRes = await pool.query(
     `SELECT COUNT(DISTINCT usuario_id) AS total FROM membros_ministerio`
   );
+
+  // Sem ministerio cadastrado nao ha o que medir (ver nota em celulas).
+  const ministeriosRes = await pool.query(`SELECT COUNT(1) AS total FROM ministerios`);
+  if (parseInt(ministeriosRes.rows[0].total, 10) === 0) {
+    return { percentual: null, label: 'Sem ministérios cadastrados' };
+  }
   const vinculados = parseInt(vinculadosRes.rows[0].total, 10);
   const percentual = Math.round((vinculados / totalAtivos) * 1000) / 10;
   return { percentual, label: `${percentual}%` };
@@ -173,9 +196,14 @@ async function calcularSaudeIgreja(pool) {
     // de Crescimento) continuam mostrando o percentual real, sem corte.
     .map((p) => ({ ...p, valor: Math.min(Math.max(p.valor, 0), 100) }));
 
+  // Exige metade do peso previsto: um score montado com poucos indicadores
+  // nao representa a saude da igreja (ver mesma regra em metricsService).
+  const pesoPrevisto = Object.values(config.pesos).reduce((s, p) => s + p, 0);
+  const pesoDisponivel = partes.reduce((s, p) => s + p.peso, 0);
+
   let scoreGeral = null;
-  if (partes.length > 0) {
-    const pesoTotal = partes.reduce((s, p) => s + p.peso, 0);
+  if (partes.length > 0 && pesoDisponivel >= pesoPrevisto / 2) {
+    const pesoTotal = pesoDisponivel;
     scoreGeral = Math.min(Math.round(partes.reduce((s, p) => s + p.valor * p.peso, 0) / pesoTotal), 100);
   }
 
