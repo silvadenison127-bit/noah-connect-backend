@@ -570,7 +570,13 @@ const metricsService = {
         componentes.push({ nome: 'Financeiro', peso: PESOS_SAUDE.financeiro, nota: NOTA_FINANCEIRO[fin.classificacao] });
       }
 
-      if (componentes.length === 0) {
+      // Uma nota de saude composta por menos da metade dos componentes nao
+      // representa a saude da igreja: um unico indicador em zero derrubaria
+      // o total. Exigimos ao menos metade do peso previsto para publicar.
+      const PESO_TOTAL_PREVISTO = Object.values(PESOS_SAUDE).reduce((s, p) => s + p, 0);
+      const pesoDisponivel = componentes.reduce((s, c) => s + c.peso, 0);
+
+      if (pesoDisponivel < PESO_TOTAL_PREVISTO / 2) {
         return {
           valor: null,
           estado: 'aguardando_dados',
