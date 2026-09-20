@@ -14,7 +14,7 @@ const INSERT_USUARIO = "INSERT INTO usuarios (nome, email, senha_hash, telefone,
 
 router.get('/', autenticar, somenteAdmin, async (req, res) => {
   try {
-    const r = await pool.query('SELECT id, nome, email, telefone, cpf, tipo, foto_url, membro_desde, ativo, status FROM usuarios ORDER BY nome ASC');
+    const r = await pool.query('SELECT id, nome, email, telefone, cpf, tipo, foto_url, membro_desde, ativo, status, endereco, bairro, cidade, estado, cep FROM usuarios ORDER BY nome ASC');
     res.json(r.rows);
   } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao buscar membros' }); }
 });
@@ -186,9 +186,21 @@ router.put('/:id/rejeitar', autenticar, somenteAdmin, async (req, res) => {
 
 router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
   const { id } = req.params;
-  const { nome, telefone, tipo, ativo, cpf } = req.body;
+  const { nome, telefone, tipo, ativo, cpf, endereco, bairro, cidade, estado, cep } = req.body;
   try {
-    const r = await pool.query('UPDATE usuarios SET nome = COALESCE($1, nome), telefone = COALESCE($2, telefone), tipo = COALESCE($3, tipo), ativo = COALESCE($4, ativo), cpf = COALESCE($5, cpf), atualizado_em = NOW() WHERE id = $6 RETURNING id, nome, email, telefone, cpf, tipo, ativo', [nome, telefone, tipo, ativo, cpf, id]);
+    // Só geocodifica quando algum campo de endereço veio na requisição.
+    // Editar apenas o telefone não deve custar uma chamada externa.
+    const mudouEndereco = [endereco, bairro, cidade, estado, cep].some((v) => v !== undefined);
+    const coord = mudouEndereco
+      ? await geocodificar({ endereco, bairro, cidade, estado, cep })
+      : null;
+
+    const r = await pool.query('UPDATE usuarios SET nome = COALESCE($1, nome), telefone = COALESCE($2, telefone), tipo = COALESCE($3, tipo), ativo = COALESCE($4, ativo), cpf = COALESCE($5, cpf), endereco = COALESCE($6, endereco), bairro = COALESCE($7, bairro), cidade = COALESCE($8, cidade), estado = COALESCE($9, estado), cep = COALESCE($10, cep), latitude = COALESCE($11, latitude), longitude = COALESCE($12, longitude), atualizado_em = NOW() WHERE id = $13 RETURNING id, nome, email, telefone, cpf, tipo, ativo, endereco, bairro, cidade, estado, cep, latitude, longitude', [
+      nome, telefone, tipo, ativo, cpf,
+      endereco, bairro, cidade, estado, cep,
+      coord?.latitude ?? null, coord?.longitude ?? null,
+      id,
+    ]);
     if (r.rows.length === 0) return res.status(404).json({ erro: 'Membro nao encontrado' });
     res.json(r.rows[0]);
   } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao atualizar membro' }); }
