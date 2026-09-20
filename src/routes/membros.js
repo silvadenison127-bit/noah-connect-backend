@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const express = require('express');
 const bcrypt  = require('bcryptjs');
@@ -6,10 +6,11 @@ const pool    = require('../config/db');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
 const { excluirMembros, excluirMembro, removerContasDoAuth } = require('../services/membros.service');
 const { supabaseAdmin, supabaseConfigurado } = require('../config/supabase');
+const { geocodificar } = require('../services/geocoding.service');
 
 const router = express.Router();
 
-const INSERT_USUARIO = "INSERT INTO usuarios (nome, email, senha_hash, telefone, cpf, tipo, status, auth_user_id, data_nascimento) VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'membro'), 'aprovado', $7, $8) RETURNING id, nome, email, telefone, cpf, tipo, ativo, membro_desde, status, auth_user_id, data_nascimento";
+const INSERT_USUARIO = "INSERT INTO usuarios (nome, email, senha_hash, telefone, cpf, tipo, status, auth_user_id, endereco, bairro, cidade, estado, cep, latitude, longitude) VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'membro'), 'aprovado', $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id, nome, email, telefone, cpf, tipo, ativo, membro_desde, status, auth_user_id, endereco, bairro, cidade, estado, cep, latitude, longitude";
 
 router.get('/', autenticar, somenteAdmin, async (req, res) => {
   try {
@@ -33,7 +34,7 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
  * (Auth criado, INSERT no Railway falhou) e coberta por compensacao no catch.
  */
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
-  const { nome, email, telefone, tipo, senha, cpf, data_nascimento } = req.body;
+  const { nome, email, telefone, tipo, senha, cpf, endereco, bairro, cidade, estado, cep } = req.body;
   if (!nome || !email || !senha) {
     return res.status(400).json({ erro: 'Nome, email e senha sao obrigatorios.' });
   }
@@ -52,11 +53,6 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
   const emailNormalizado = String(email).trim().toLowerCase();
   const nomeLimpo = String(nome).trim();
   const documento = cpf ? String(cpf).replace(/\D/g, '') : null;
-
-  // O campo `date` do navegador entrega no formato ISO (YYYY-MM-DD), que e o
-  // que o Postgres e o trigger do Supabase esperam. String vazia vira null para
-  // nao quebrar a coluna do tipo `date`.
-  const nascimento = data_nascimento ? String(data_nascimento).trim() || null : null;
 
   let authUserId = null;
 
@@ -79,7 +75,7 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
         full_name: nomeLimpo,
         phone: telefone || null,
         document: documento,
-        birth_date: nascimento,
+        birth_date: null,
       },
     });
 
@@ -103,6 +99,11 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
 
     // 2. Registro no Railway, ja com o vinculo preenchido. Um unico INSERT:
     //    ou o membro nasce completo, ou nao nasce.
+    // Endereco e opcional. Se vier, buscamos as coordenadas para o mapa;
+    // se a busca falhar, o membro nasce sem coordenadas e pode ser
+    // geocodificado depois, sem travar o cadastro.
+    const coord = await geocodificar({ endereco, bairro, cidade, estado, cep });
+
     const senha_hash = await bcrypt.hash(senha, 10);
     const r = await pool.query(INSERT_USUARIO, [
       nomeLimpo,
@@ -112,7 +113,13 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
       documento,
       tipo,
       authUserId,
-      nascimento,
+      endereco || null,
+      bairro || null,
+      cidade || null,
+      estado || null,
+      cep || null,
+      coord?.latitude ?? null,
+      coord?.longitude ?? null,
     ]);
 
     return res.status(201).json(r.rows[0]);
