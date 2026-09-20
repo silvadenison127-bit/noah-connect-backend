@@ -1,6 +1,7 @@
-const express = require('express');
+﻿const express = require('express');
 const pool = require('../config/db');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
+const { geocodificar } = require('../services/geocoding.service');
 const {
   publicarCelulaNoApp,
   atualizarCelulaNoApp,
@@ -34,16 +35,19 @@ router.get('/', autenticar, async (req, res) => {
  * pastor cadastraria algo que nenhum membro veria.
  */
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
-  const { nome, lider_id, dia_semana, horario, endereco } = req.body;
+  const { nome, lider_id, dia_semana, horario, endereco, bairro, cidade } = req.body;
   if (!nome) {
     return res.status(400).json({ erro: 'Nome da célula é obrigatório' });
   }
   try {
+    const coord = await geocodificar({ endereco, bairro, cidade });
+
     const resultado = await pool.query(
-      `INSERT INTO celulas (nome, lider_id, dia_semana, horario, endereco)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO celulas (nome, lider_id, dia_semana, horario, endereco, bairro, cidade, latitude, longitude)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [nome, lider_id || null, dia_semana || null, horario || null, endereco || null]
+      [nome, lider_id || null, dia_semana || null, horario || null, endereco || null,
+       bairro || null, cidade || null, coord?.latitude ?? null, coord?.longitude ?? null]
     );
 
     const celula = resultado.rows[0];
@@ -74,17 +78,25 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
  * de continuar invisível para sempre.
  */
 router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
-  const { nome, lider_id, dia_semana, horario, endereco } = req.body;
+  const { nome, lider_id, dia_semana, horario, endereco, bairro, cidade } = req.body;
   try {
+    const mudouEndereco = [endereco, bairro, cidade].some((v) => v !== undefined);
+    const coord = mudouEndereco ? await geocodificar({ endereco, bairro, cidade }) : null;
+
     const resultado = await pool.query(
       `UPDATE celulas SET
         nome = COALESCE($1, nome),
         lider_id = COALESCE($2, lider_id),
         dia_semana = COALESCE($3, dia_semana),
         horario = COALESCE($4, horario),
-        endereco = COALESCE($5, endereco)
-       WHERE id = $6 RETURNING *`,
-      [nome, lider_id, dia_semana, horario, endereco, req.params.id]
+        endereco = COALESCE($5, endereco),
+        bairro = COALESCE($6, bairro),
+        cidade = COALESCE($7, cidade),
+        latitude = COALESCE($8, latitude),
+        longitude = COALESCE($9, longitude)
+       WHERE id = $10 RETURNING *`,
+      [nome, lider_id, dia_semana, horario, endereco, bairro, cidade,
+       coord?.latitude ?? null, coord?.longitude ?? null, req.params.id]
     );
     if (resultado.rows.length === 0) return res.status(404).json({ erro: 'Célula não encontrada' });
 
