@@ -35,19 +35,20 @@ router.get('/', autenticar, async (req, res) => {
  * pastor cadastraria algo que nenhum membro veria.
  */
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
-  const { nome, lider_id, dia_semana, horario, endereco, bairro, cidade } = req.body;
+  const { nome, lider_id, dia_semana, horario, endereco, bairro, cidade, estado, cep } = req.body;
   if (!nome) {
     return res.status(400).json({ erro: 'Nome da célula é obrigatório' });
   }
   try {
-    const coord = await geocodificar({ endereco, bairro, cidade });
+    const coord = await geocodificar({ endereco, bairro, cidade, estado, cep });
 
     const resultado = await pool.query(
-      `INSERT INTO celulas (nome, lider_id, dia_semana, horario, endereco, bairro, cidade, latitude, longitude)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO celulas (nome, lider_id, dia_semana, horario, endereco, bairro, cidade, estado, cep, latitude, longitude)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [nome, lider_id || null, dia_semana || null, horario || null, endereco || null,
-       bairro || null, cidade || null, coord?.latitude ?? null, coord?.longitude ?? null]
+       bairro || null, cidade || null, estado || null, cep || null,
+       coord?.latitude ?? null, coord?.longitude ?? null]
     );
 
     const celula = resultado.rows[0];
@@ -78,10 +79,10 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
  * de continuar invisível para sempre.
  */
 router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
-  const { nome, lider_id, dia_semana, horario, endereco, bairro, cidade } = req.body;
+  const { nome, lider_id, dia_semana, horario, endereco, bairro, cidade, estado, cep } = req.body;
   try {
-    const mudouEndereco = [endereco, bairro, cidade].some((v) => v !== undefined);
-    const coord = mudouEndereco ? await geocodificar({ endereco, bairro, cidade }) : null;
+    const mudouEndereco = [endereco, bairro, cidade, estado, cep].some((v) => v !== undefined);
+    const coord = mudouEndereco ? await geocodificar({ endereco, bairro, cidade, estado, cep }) : null;
 
     const resultado = await pool.query(
       `UPDATE celulas SET
@@ -92,10 +93,12 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
         endereco = COALESCE($5, endereco),
         bairro = COALESCE($6, bairro),
         cidade = COALESCE($7, cidade),
-        latitude = COALESCE($8, latitude),
-        longitude = COALESCE($9, longitude)
-       WHERE id = $10 RETURNING *`,
-      [nome, lider_id, dia_semana, horario, endereco, bairro, cidade,
+        estado = COALESCE($8, estado),
+        cep = COALESCE($9, cep),
+        latitude = COALESCE($10, latitude),
+        longitude = COALESCE($11, longitude)
+       WHERE id = $12 RETURNING *`,
+      [nome, lider_id, dia_semana, horario, endereco, bairro, cidade, estado, cep,
        coord?.latitude ?? null, coord?.longitude ?? null, req.params.id]
     );
     if (resultado.rows.length === 0) return res.status(404).json({ erro: 'Célula não encontrada' });
