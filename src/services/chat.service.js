@@ -82,7 +82,8 @@ async function listarConversas(status = 'open') {
       .select('room_id')
       .in('room_id', roomIds)
       .eq('sender_role', 'member')
-      .is('read_at', null),
+      .is('read_at', null)
+      .is('admin_hidden_at', null),
   ]);
 
   if (membros.error) propagar(membros.error);
@@ -111,6 +112,7 @@ async function listarMensagens(roomId, limite = 200) {
     .from('chat_messages')
     .select('id, room_id, sender_profile_id, sender_role, body, read_at, created_at')
     .eq('room_id', roomId)
+    .is('admin_hidden_at', null)
     .order('created_at', { ascending: true })
     .limit(limite);
 
@@ -209,15 +211,37 @@ async function contarNaoLidas() {
     .select('id', { count: 'exact', head: true })
     .in('room_id', salas.map((s) => s.id))
     .eq('sender_role', 'member')
-    .is('read_at', null);
+    .is('read_at', null)
+    .is('admin_hidden_at', null);
 
   if (erroContagem) propagar(erroContagem);
   return { total: count || 0 };
 }
 
+/**
+ * Oculta mensagens apenas no painel. O app do membro nao usa esta coluna.
+ * Sempre restrito a conversa informada; sem ids, oculta todas da conversa.
+ */
+async function ocultarMensagens(roomId, ids) {
+  exigirSupabase();
+
+  let consulta = supabaseAdmin
+    .from('chat_messages')
+    .update({ admin_hidden_at: new Date().toISOString() })
+    .eq('room_id', roomId)
+    .is('admin_hidden_at', null);
+
+  if (ids) consulta = consulta.in('id', ids);
+
+  const { data, error } = await consulta.select('id');
+  if (error) propagar(error);
+  return { ocultadas: (data || []).length };
+}
+
 module.exports = {
   STATUS,
   contarNaoLidas,
+  ocultarMensagens,
   listarConversas,
   listarMensagens,
   responder,

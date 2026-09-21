@@ -43,6 +43,27 @@ router.get('/:roomId/mensagens', autenticar, somenteAdmin, async (req, res) => {
   }
 });
 
+// Oculta mensagens so no painel. Body: { ids: [...] } ou { todas: true }.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+router.post('/:roomId/mensagens/ocultar', autenticar, somenteAdmin, async (req, res) => {
+  const { ids, todas } = req.body || {};
+  if (!UUID.test(req.params.roomId)) {
+    return res.status(400).json({ erro: 'Conversa invalida.' });
+  }
+  let lista = null;
+  if (todas !== true) {
+    if (!Array.isArray(ids) || !ids.length || ids.length > 500 || !ids.every((i) => UUID.test(String(i)))) {
+      return res.status(400).json({ erro: 'Selecione as mensagens a excluir.' });
+    }
+    lista = ids;
+  }
+  try {
+    res.json(await chatService.ocultarMensagens(req.params.roomId, lista));
+  } catch (err) {
+    responderErro(res, err, 'Erro ao excluir mensagens');
+  }
+});
+
 // Responder ao membro.
 router.post('/:roomId/mensagens', autenticar, somenteAdmin, async (req, res) => {
   const { body } = req.body;
