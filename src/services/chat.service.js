@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Atendimento do chat pelo painel.
  *
  * O aplicativo ja tem chat completo: cria a sala pela RPC
@@ -192,8 +192,32 @@ async function alterarStatus(roomId, status) {
   return data;
 }
 
+/** Total de mensagens de membros ainda nao lidas, nas conversas abertas. */
+async function contarNaoLidas() {
+  exigirSupabase();
+
+  const { data: salas, error } = await supabaseAdmin
+    .from('chat_rooms')
+    .select('id')
+    .eq('status', 'open');
+
+  if (error) propagar(error);
+  if (!salas || !salas.length) return { total: 0 };
+
+  const { count, error: erroContagem } = await supabaseAdmin
+    .from('chat_messages')
+    .select('id', { count: 'exact', head: true })
+    .in('room_id', salas.map((s) => s.id))
+    .eq('sender_role', 'member')
+    .is('read_at', null);
+
+  if (erroContagem) propagar(erroContagem);
+  return { total: count || 0 };
+}
+
 module.exports = {
   STATUS,
+  contarNaoLidas,
   listarConversas,
   listarMensagens,
   responder,

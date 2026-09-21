@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
 const chatService = require('../services/chat.service');
 const router = express.Router();
@@ -22,6 +22,15 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
     res.json(await chatService.listarConversas(status));
   } catch (err) {
     responderErro(res, err, 'Erro ao listar conversas');
+  }
+});
+
+// Total de nao lidas para o badge do menu. Precisa vir antes de /:roomId.
+router.get('/nao-lidas', autenticar, somenteAdmin, async (req, res) => {
+  try {
+    res.json(await chatService.contarNaoLidas());
+  } catch (err) {
+    responderErro(res, err, 'Erro ao contar mensagens nao lidas');
   }
 });
 
