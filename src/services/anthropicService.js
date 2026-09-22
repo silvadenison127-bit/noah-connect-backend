@@ -58,7 +58,9 @@ async function perguntar({ pergunta, contexto, historico = [] }) {
   const texto = resposta.content
     .filter((bloco) => bloco.type === 'text')
     .map((bloco) => bloco.text)
-    .join('\n');
+    .join('\n')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '');
 
   return { modo: 'real', resposta: texto };
 }
