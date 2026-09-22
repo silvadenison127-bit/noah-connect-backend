@@ -125,8 +125,23 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
 // Remover curso (admin)
 router.delete('/:id', autenticar, somenteAdmin, async (req, res) => {
   try {
-    await pool.query('DELETE FROM cursos WHERE id = $1', [req.params.id]);
-    res.status(204).send();
+    // Exclusao atomica: so apaga se o curso nao tiver turmas. A FK turmas.curso_id
+    // e ON DELETE CASCADE: apagar um curso com turmas levaria junto turmas,
+    // inscricoes e presencas. Com turmas, o caminho correto e desativar.
+    const excluido = await pool.query(
+      `DELETE FROM cursos c WHERE c.id = $1
+       AND NOT EXISTS (SELECT 1 FROM turmas t WHERE t.curso_id = c.id)`,
+      [req.params.id]
+    );
+    if (excluido.rowCount === 1) return res.status(204).send();
+
+    const existe = await pool.query('SELECT 1 FROM cursos WHERE id = $1', [req.params.id]);
+    if (existe.rowCount === 0) {
+      return res.status(404).json({ erro: 'Curso n\u00e3o encontrado' });
+    }
+    return res.status(409).json({
+      erro: 'Este curso possui turmas e n\u00e3o pode ser exclu\u00eddo. Desative o curso para preservar o hist\u00f3rico.',
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Erro ao remover curso' });
