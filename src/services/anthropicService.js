@@ -44,7 +44,7 @@ async function perguntar({ pergunta, contexto, historico = [] }) {
   ];
 
   const systemPrompt = `Voce e a IA Noah, assistente de dados da Igreja Noah. ` +
-    `Responda em portugues, de forma objetiva e acolhedora, usando apenas os dados fornecidos no contexto abaixo. ` +
+    `Responda em portugues, de forma objetiva e acolhedora, em texto simples, sem formatacao Markdown (nao use asteriscos, cerquilhas nem listas com marcadores), usando apenas os dados fornecidos no contexto abaixo. ` +
     `Se a informacao nao estiver no contexto, diga que nao possui esse dado ainda, sem inventar numeros.\n\n` +
     `Contexto de dados atual:\n${JSON.stringify(contexto, null, 2)}`;
 
