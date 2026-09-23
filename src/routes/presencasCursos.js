@@ -23,7 +23,7 @@ router.get('/turma/:turmaId', autenticar, somenteAdmin, async (req, res) => {
     res.json(resultado.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao buscar lista de presenca' });
+    res.status(500).json({ erro: 'Erro ao buscar lista de presença' });
   }
 });
 
@@ -31,7 +31,7 @@ router.get('/turma/:turmaId', autenticar, somenteAdmin, async (req, res) => {
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
   const { inscricao_id, data_aula, status } = req.body;
   if (!inscricao_id || !data_aula || !status) {
-    return res.status(400).json({ erro: 'inscricao_id, data_aula e status sao obrigatorios' });
+    return res.status(400).json({ erro: 'inscricao_id, data_aula e status são obrigatórios' });
   }
   try {
     const resultado = await pool.query(
@@ -45,7 +45,7 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
     res.status(201).json(resultado.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao salvar presenca' });
+    res.status(500).json({ erro: 'Erro ao salvar presença' });
   }
 });
 
@@ -53,7 +53,7 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
 router.post('/lote', autenticar, somenteAdmin, async (req, res) => {
   const { data_aula, registros } = req.body;
   if (!data_aula || !Array.isArray(registros) || registros.length === 0) {
-    return res.status(400).json({ erro: 'data_aula e registros (lista) sao obrigatorios' });
+    return res.status(400).json({ erro: 'data_aula e registros (lista) são obrigatórios' });
   }
   try {
     const resultados = [];
@@ -71,7 +71,7 @@ router.post('/lote', autenticar, somenteAdmin, async (req, res) => {
     res.status(201).json(resultados);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao salvar presencas em lote' });
+    res.status(500).json({ erro: 'Erro ao salvar presenças em lote' });
   }
 });
 
@@ -109,7 +109,7 @@ router.get('/turma/:turmaId/relatorio-frequencia', autenticar, somenteAdmin, asy
     res.json(linhas);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao gerar relatorio de frequencia' });
+    res.status(500).json({ erro: 'Erro ao gerar relatório de frequência' });
   }
 });
 
@@ -135,7 +135,7 @@ router.get('/frequencia/:inscricaoId', autenticar, somenteAdmin, async (req, res
     res.json({ ...linha, percentual_frequencia: percentual });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao calcular frequencia' });
+    res.status(500).json({ erro: 'Erro ao calcular frequência' });
   }
 });
 

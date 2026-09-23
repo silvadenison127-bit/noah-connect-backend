@@ -15,7 +15,7 @@ router.get('/', autenticar, async (req, res) => {
     res.json(resultado.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao buscar estudos biblicos' });
+    res.status(500).json({ erro: 'Erro ao buscar estudos bíblicos' });
   }
 });
 
@@ -30,7 +30,7 @@ router.get('/:id', autenticar, async (req, res) => {
       [req.params.id]
     );
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Estudo nao encontrado' });
+      return res.status(404).json({ erro: 'Estudo não encontrado' });
     }
     res.json(resultado.rows[0]);
   } catch (err) {
@@ -43,7 +43,7 @@ router.get('/:id', autenticar, async (req, res) => {
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
   const { titulo, descricao, conteudo, categoria, autor } = req.body;
   if (!titulo || !conteudo) {
-    return res.status(400).json({ erro: 'Titulo e conteudo sao obrigatorios' });
+    return res.status(400).json({ erro: 'Título e conteúdo são obrigatórios' });
   }
   try {
     const resultado = await pool.query(
@@ -55,7 +55,7 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
     res.status(201).json(resultado.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao criar estudo biblico' });
+    res.status(500).json({ erro: 'Erro ao criar estudo bíblico' });
   }
 });
 
@@ -75,7 +75,7 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
       [titulo, descricao, conteudo, categoria, autor, req.params.id]
     );
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Estudo nao encontrado' });
+      return res.status(404).json({ erro: 'Estudo não encontrado' });
     }
     res.json(resultado.rows[0]);
   } catch (err) {

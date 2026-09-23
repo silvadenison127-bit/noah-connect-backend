@@ -86,7 +86,7 @@ async function buscarPedidosDoApp() {
   if (!supabaseAdmin) {
     return {
       pedidos: [],
-      aviso: 'Integracao com o aplicativo nao configurada neste servidor.',
+      aviso: 'Integração com o aplicativo não configurada neste servidor.',
     };
   }
 
@@ -99,7 +99,7 @@ async function buscarPedidosDoApp() {
     console.error('[oracao] falha ao ler pedidos do aplicativo:', error.message);
     return {
       pedidos: [],
-      aviso: 'Nao foi possivel carregar os pedidos enviados pelo aplicativo.',
+      aviso: 'Não foi possível carregar os pedidos enviados pelo aplicativo.',
     };
   }
 
@@ -127,14 +127,14 @@ async function resolverUuidDoPastor(usuarioId) {
   );
 
   if (!rows.length) {
-    return { uuid: null, erro: 'Usuario do painel nao encontrado.' };
+    return { uuid: null, erro: 'Usuário do painel não encontrado.' };
   }
   if (!rows[0].auth_user_id) {
     return {
       uuid: null,
       erro:
-        'Este usuario do painel ainda nao esta vinculado a uma conta do aplicativo. ' +
-        'Sem o vinculo a autoria da resposta nao pode ser registrada.',
+        'Este usuário do painel ainda não está vinculado a uma conta do aplicativo. ' +
+        'Sem o vínculo a autoria da resposta não pode ser registrada.',
     };
   }
   return { uuid: rows[0].auth_user_id, erro: null };
@@ -146,7 +146,7 @@ async function responderPedidoDoApp(uuidPedido, resposta, uuidPastor) {
     return {
       pedido: null,
       status: 502,
-      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+      erro: 'Integração com o aplicativo não configurada neste servidor.',
     };
   }
 
@@ -167,11 +167,11 @@ async function responderPedidoDoApp(uuidPedido, resposta, uuidPastor) {
     return {
       pedido: null,
       status: 502,
-      erro: 'Nao foi possivel gravar a resposta no aplicativo.',
+      erro: 'Não foi possível gravar a resposta no aplicativo.',
     };
   }
   if (!data) {
-    return { pedido: null, status: 404, erro: 'Pedido nao encontrado' };
+    return { pedido: null, status: 404, erro: 'Pedido não encontrado' };
   }
 
   // Notificacao e efeito secundario: se falhar, a resposta continua gravada.
@@ -179,8 +179,8 @@ async function responderPedidoDoApp(uuidPedido, resposta, uuidPastor) {
     const { error: erroNotif } = await supabaseAdmin.from("notifications").insert({
       member_id: data.member_id,
       type: "prayer",
-      title: "Seu pedido de oracao foi respondido",
-      body: "O pastor respondeu ao seu pedido de oracao.",
+      title: "Seu pedido de oração foi respondido",
+      body: "O pastor respondeu ao seu pedido de oração.",
       deep_link: "/(member)/meus-pedidos",
     });
     if (erroNotif) {
@@ -199,13 +199,13 @@ async function alterarStatusDoPedidoDoApp(uuidPedido, statusDoPainel) {
     return {
       pedido: null,
       status: 502,
-      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+      erro: 'Integração com o aplicativo não configurada neste servidor.',
     };
   }
 
   const statusDoApp = STATUS_PAINEL_PARA_APP[statusDoPainel];
   if (!statusDoApp) {
-    return { pedido: null, status: 400, erro: 'Status invalido' };
+    return { pedido: null, status: 400, erro: 'Status inválido' };
   }
 
   const { data, error } = await supabaseAdmin
@@ -220,11 +220,11 @@ async function alterarStatusDoPedidoDoApp(uuidPedido, statusDoPainel) {
     return {
       pedido: null,
       status: 502,
-      erro: 'Nao foi possivel atualizar o status no aplicativo.',
+      erro: 'Não foi possível atualizar o status no aplicativo.',
     };
   }
   if (!data) {
-    return { pedido: null, status: 404, erro: 'Pedido nao encontrado' };
+    return { pedido: null, status: 404, erro: 'Pedido não encontrado' };
   }
 
   return { pedido: traduzirPedidoDoApp(data), status: 200, erro: null };
@@ -244,7 +244,7 @@ async function excluirPedidoDoApp(uuidPedido) {
   if (!supabaseAdmin) {
     return {
       status: 502,
-      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+      erro: 'Integração com o aplicativo não configurada neste servidor.',
     };
   }
 
@@ -257,10 +257,10 @@ async function excluirPedidoDoApp(uuidPedido) {
 
   if (error) {
     console.error('[oracao] falha ao excluir pedido do aplicativo:', error.message);
-    return { status: 502, erro: 'Nao foi possivel excluir o pedido no aplicativo.' };
+    return { status: 502, erro: 'Não foi possível excluir o pedido no aplicativo.' };
   }
   if (!data) {
-    return { status: 404, erro: 'Pedido nao encontrado' };
+    return { status: 404, erro: 'Pedido não encontrado' };
   }
 
   return { status: 200, erro: null };

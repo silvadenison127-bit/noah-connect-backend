@@ -36,14 +36,14 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
   const { nome, email, telefone, tipo, senha, cpf, endereco, bairro, cidade, estado, cep } = req.body;
   if (!nome || !email || !senha) {
-    return res.status(400).json({ erro: 'Nome, email e senha sao obrigatorios.' });
+    return res.status(400).json({ erro: 'Nome, email e senha são obrigatórios.' });
   }
 
   // Sem o cliente administrativo o membro nasceria sem acesso ao aplicativo e
   // ninguem perceberia. Recusar e melhor do que criar pela metade.
   if (!supabaseConfigurado) {
     return res.status(503).json({
-      erro: 'Cadastro indisponivel: a integracao com o aplicativo nao esta configurada.',
+      erro: 'Cadastro indisponível: a integração com o aplicativo não está configurada.',
     });
   }
 
@@ -61,7 +61,7 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
       emailNormalizado,
     ]);
     if (existente.rows.length > 0) {
-      return res.status(409).json({ erro: 'Ja existe um usuario com esse email.' });
+      return res.status(409).json({ erro: 'Já existe um usuário com esse email.' });
     }
 
     // 1. Conta no Supabase Auth. `email_confirm: true` porque as credenciais
@@ -85,16 +85,16 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
       // exemplo). Nao vinculamos automaticamente: a senha digitada aqui nao
       // valeria, e o membro receberia credenciais que nao funcionam.
       if (/already|registered|exists|duplicate/i.test(mensagem)) {
-        return res.status(409).json({ erro: 'Ja existe uma conta com esse email no aplicativo.' });
+        return res.status(409).json({ erro: 'Já existe uma conta com esse email no aplicativo.' });
       }
       console.error('[membros] falha ao criar usuario no Supabase Auth:', erroAuth);
-      return res.status(502).json({ erro: 'Nao foi possivel criar o acesso ao aplicativo.' });
+      return res.status(502).json({ erro: 'Não foi possível criar o acesso ao aplicativo.' });
     }
 
     authUserId = criado?.user?.id ?? null;
     if (!authUserId) {
       console.error('[membros] Supabase nao devolveu o id do usuario criado.');
-      return res.status(502).json({ erro: 'Nao foi possivel criar o acesso ao aplicativo.' });
+      return res.status(502).json({ erro: 'Não foi possível criar o acesso ao aplicativo.' });
     }
 
     // 2. Registro no Railway, ja com o vinculo preenchido. Um unico INSERT:
@@ -171,7 +171,7 @@ router.get('/pendentes', autenticar, somenteAdmin, async (req, res) => {
 router.put('/:id/aprovar', autenticar, somenteAdmin, async (req, res) => {
   try {
     const r = await pool.query("UPDATE usuarios SET status = 'aprovado', atualizado_em = NOW() WHERE id = $1 RETURNING id, nome, email, status", [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ erro: 'Usuario nao encontrado' });
+    if (r.rows.length === 0) return res.status(404).json({ erro: 'Usuário não encontrado' });
     res.json(r.rows[0]);
   } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao aprovar membro' }); }
 });
@@ -179,7 +179,7 @@ router.put('/:id/aprovar', autenticar, somenteAdmin, async (req, res) => {
 router.put('/:id/rejeitar', autenticar, somenteAdmin, async (req, res) => {
   try {
     const r = await pool.query("UPDATE usuarios SET status = 'rejeitado', atualizado_em = NOW() WHERE id = $1 RETURNING id, nome, email, status", [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ erro: 'Usuario nao encontrado' });
+    if (r.rows.length === 0) return res.status(404).json({ erro: 'Usuário não encontrado' });
     res.json(r.rows[0]);
   } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao rejeitar membro' }); }
 });
@@ -201,7 +201,7 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
       coord?.latitude ?? null, coord?.longitude ?? null,
       id,
     ]);
-    if (r.rows.length === 0) return res.status(404).json({ erro: 'Membro nao encontrado' });
+    if (r.rows.length === 0) return res.status(404).json({ erro: 'Membro não encontrado' });
     res.json(r.rows[0]);
   } catch (err) { console.error(err); res.status(500).json({ erro: 'Erro ao atualizar membro' }); }
 });

@@ -7,7 +7,7 @@ const router = express.Router();
 function responderErro(res, err, mensagemPadrao) {
   console.error('[chat]', err.codigo || '', err.message);
   if (err.codigo === chatService.STATUS.NAO_CONFIGURADO) {
-    return res.status(503).json({ erro: 'Chat indisponivel: Supabase nao configurado.' });
+    return res.status(503).json({ erro: 'Chat indisponível: Supabase não configurado.' });
   }
   if (err.codigo === chatService.STATUS.SEM_ATENDENTE) {
     return res.status(409).json({ erro: err.message });
@@ -30,7 +30,7 @@ router.get('/nao-lidas', autenticar, somenteAdmin, async (req, res) => {
   try {
     res.json(await chatService.contarNaoLidas());
   } catch (err) {
-    responderErro(res, err, 'Erro ao contar mensagens nao lidas');
+    responderErro(res, err, 'Erro ao contar mensagens não lidas');
   }
 });
 

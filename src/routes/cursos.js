@@ -61,7 +61,7 @@ router.get('/dashboard-stats', autenticar, somenteAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao buscar estatisticas do dashboard' });
+    res.status(500).json({ erro: 'Erro ao buscar estatísticas do dashboard' });
   }
 });
 
@@ -70,7 +70,7 @@ router.get('/:id', autenticar, async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM cursos WHERE id = $1', [req.params.id]);
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Curso nao encontrado' });
+      return res.status(404).json({ erro: 'Curso não encontrado' });
     }
     res.json(resultado.rows[0]);
   } catch (err) {
@@ -83,7 +83,7 @@ router.get('/:id', autenticar, async (req, res) => {
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
   const { nome, descricao } = req.body;
   if (!nome) {
-    return res.status(400).json({ erro: 'O nome do curso e obrigatorio' });
+    return res.status(400).json({ erro: 'O nome do curso é obrigatório' });
   }
   try {
     const resultado = await pool.query(
@@ -113,7 +113,7 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
       [nome, descricao, ativo, req.params.id]
     );
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Curso nao encontrado' });
+      return res.status(404).json({ erro: 'Curso não encontrado' });
     }
     res.json(resultado.rows[0]);
   } catch (err) {

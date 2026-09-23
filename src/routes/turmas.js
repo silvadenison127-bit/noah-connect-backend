@@ -39,7 +39,7 @@ router.get('/:id', autenticar, async (req, res) => {
       [req.params.id]
     );
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Turma nao encontrada' });
+      return res.status(404).json({ erro: 'Turma não encontrada' });
     }
     res.json(resultado.rows[0]);
   } catch (err) {
@@ -52,7 +52,7 @@ router.get('/:id', autenticar, async (req, res) => {
 router.post('/', autenticar, somenteAdmin, async (req, res) => {
   const { curso_id, nome, professor, data_inicio, data_fim, dias_semana, horario, local, max_alunos, status } = req.body;
   if (!curso_id || !nome) {
-    return res.status(400).json({ erro: 'curso_id e nome sao obrigatorios' });
+    return res.status(400).json({ erro: 'curso_id e nome são obrigatórios' });
   }
   try {
     const resultado = await pool.query(
@@ -88,7 +88,7 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
       [nome, professor, data_inicio, data_fim, dias_semana, horario, local, max_alunos, status, req.params.id]
     );
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Turma nao encontrada' });
+      return res.status(404).json({ erro: 'Turma não encontrada' });
     }
     res.json(resultado.rows[0]);
   } catch (err) {

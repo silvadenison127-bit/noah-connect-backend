@@ -103,7 +103,7 @@ async function removerContasDoAuth(authIds) {
 
 async function excluirMembros({ ids, confirmado, executor, ip }) {
   if (confirmado !== true) {
-    const err = new Error('Confirmacao explicita obrigatoria.');
+    const err = new Error('Confirmação explícita obrigatória.');
     err.status = 400;
     throw err;
   }
@@ -114,7 +114,7 @@ async function excluirMembros({ ids, confirmado, executor, ip }) {
     throw err;
   }
   if (idsLimpos.includes(String(executor.id))) {
-    const err = new Error('Voce nao pode excluir o seu proprio usuario.');
+    const err = new Error('Você não pode excluir o seu próprio usuário.');
     err.status = 403;
     throw err;
   }
@@ -124,7 +124,7 @@ async function excluirMembros({ ids, confirmado, executor, ip }) {
       [idsLimpos]
     );
     if (adminsAlvo.rows.length > 0) {
-      const err = new Error('Nao e permitido excluir administradores.');
+      const err = new Error('Não é permitido excluir administradores.');
       err.status = 403;
       throw err;
     }
@@ -155,7 +155,7 @@ async function excluirMembros({ ids, confirmado, executor, ip }) {
       operacao:      'excluir_membros',
       ids_afetados:  idsExcluidos,
       impacto,
-      resultado:     `${idsExcluidos.length} usuario(s) excluido(s)`,
+      resultado:     `${idsExcluidos.length} usuário(s) excluído(s)`,
       ip,
     });
     return { excluidos: idsExcluidos.length, ids: idsExcluidos, impacto, auditoria_id, authIds };

@@ -37,7 +37,7 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
     res.json(resultado.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao buscar inscricoes' });
+    res.status(500).json({ erro: 'Erro ao buscar inscrições' });
   }
 });
 
@@ -53,12 +53,12 @@ router.get('/:id', autenticar, somenteAdmin, async (req, res) => {
       [req.params.id]
     );
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Inscricao nao encontrada' });
+      return res.status(404).json({ erro: 'Inscrição não encontrada' });
     }
     res.json(resultado.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao buscar inscricao' });
+    res.status(500).json({ erro: 'Erro ao buscar inscrição' });
   }
 });
 
@@ -66,7 +66,7 @@ router.get('/:id', autenticar, somenteAdmin, async (req, res) => {
 router.post('/', autenticar, async (req, res) => {
   const { turma_id, nome_completo, telefone, email, cpf, observacoes } = req.body;
   if (!turma_id || !nome_completo) {
-    return res.status(400).json({ erro: 'turma_id e nome_completo sao obrigatorios' });
+    return res.status(400).json({ erro: 'turma_id e nome_completo são obrigatórios' });
   }
   try {
     const resultado = await pool.query(
@@ -78,7 +78,7 @@ router.post('/', autenticar, async (req, res) => {
     res.status(201).json(resultado.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao criar inscricao' });
+    res.status(500).json({ erro: 'Erro ao criar inscrição' });
   }
 });
 
@@ -99,12 +99,12 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
       [nome_completo, telefone, email, cpf, status, observacoes, req.params.id]
     );
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Inscricao nao encontrada' });
+      return res.status(404).json({ erro: 'Inscrição não encontrada' });
     }
     res.json(resultado.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao atualizar inscricao' });
+    res.status(500).json({ erro: 'Erro ao atualizar inscrição' });
   }
 });
 
@@ -115,7 +115,7 @@ router.delete('/:id', autenticar, somenteAdmin, async (req, res) => {
     res.status(204).send();
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao remover inscricao' });
+    res.status(500).json({ erro: 'Erro ao remover inscrição' });
   }
 });
 

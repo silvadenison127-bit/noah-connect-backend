@@ -25,7 +25,7 @@ const STATUS = {
 
 function exigirSupabase() {
   if (!supabaseAdmin) {
-    const erro = new Error('Supabase nao configurado no servidor.');
+    const erro = new Error('Supabase não configurado no servidor.');
     erro.codigo = STATUS.NAO_CONFIGURADO;
     throw erro;
   }
@@ -178,7 +178,7 @@ async function alterarStatus(roomId, status) {
   exigirSupabase();
 
   if (!['open', 'closed'].includes(status)) {
-    const erro = new Error('Status invalido.');
+    const erro = new Error('Status inválido.');
     erro.codigo = STATUS.FALHA;
     throw erro;
   }

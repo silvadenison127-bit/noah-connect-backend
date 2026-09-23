@@ -22,9 +22,9 @@ function respostaSimulada(pergunta, contexto) {
   const resumo = contexto?.resumoTextual || 'os dados disponiveis da igreja';
   return {
     modo: 'demonstracao',
-    resposta: `Modo demonstracao: ainda nao ha uma chave da Anthropic configurada. ` +
+    resposta: `Modo demonstração: ainda não há uma chave da Anthropic configurada. ` +
       `Quando configurada, a IA Noah respondera "${pergunta}" com base em ${resumo}. ` +
-      `Esta e uma resposta simulada apenas para fins de visualizacao da interface.`,
+      `Esta é uma resposta simulada apenas para fins de visualização da interface.`,
   };
 }
 

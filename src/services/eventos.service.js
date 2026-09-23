@@ -107,7 +107,7 @@ async function publicarEventoNoApp(evento, usuarioId) {
     return {
       uuid: null,
       status: STATUS.NAO_CONFIGURADO,
-      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+      erro: 'Integração com o aplicativo não configurada neste servidor.',
     };
   }
 
@@ -125,7 +125,7 @@ async function publicarEventoNoApp(evento, usuarioId) {
     return {
       uuid: null,
       status: STATUS.FALHA,
-      erro: 'Nao foi possivel publicar o evento no aplicativo.',
+      erro: 'Não foi possível publicar o evento no aplicativo.',
     };
   }
 
@@ -155,7 +155,7 @@ async function atualizarEventoNoApp(evento, uuid) {
     return {
       uuid,
       status: STATUS.NAO_CONFIGURADO,
-      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+      erro: 'Integração com o aplicativo não configurada neste servidor.',
     };
   }
 
@@ -173,7 +173,7 @@ async function atualizarEventoNoApp(evento, uuid) {
     return {
       uuid,
       status: STATUS.FALHA,
-      erro: 'Nao foi possivel atualizar o evento no aplicativo.',
+      erro: 'Não foi possível atualizar o evento no aplicativo.',
     };
   }
 
@@ -185,7 +185,7 @@ async function atualizarEventoNoApp(evento, uuid) {
     return {
       uuid,
       status: STATUS.NAO_ENCONTRADO,
-      erro: 'O evento vinculado nao existe mais no aplicativo.',
+      erro: 'O evento vinculado não existe mais no aplicativo.',
     };
   }
 
@@ -210,7 +210,7 @@ async function cancelarEventoNoApp(uuid) {
     return {
       uuid,
       status: STATUS.NAO_CONFIGURADO,
-      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+      erro: 'Integração com o aplicativo não configurada neste servidor.',
     };
   }
 
@@ -225,7 +225,7 @@ async function cancelarEventoNoApp(uuid) {
     return {
       uuid,
       status: STATUS.FALHA,
-      erro: 'Nao foi possivel cancelar o evento no aplicativo.',
+      erro: 'Não foi possível cancelar o evento no aplicativo.',
     };
   }
 
@@ -237,7 +237,7 @@ async function cancelarEventoNoApp(uuid) {
     return {
       uuid,
       status: STATUS.NAO_ENCONTRADO,
-      erro: 'O evento vinculado nao existe mais no aplicativo.',
+      erro: 'O evento vinculado não existe mais no aplicativo.',
     };
   }
 
@@ -258,12 +258,12 @@ async function vincularEvento(railwayId, uuid) {
       [uuid, railwayId],
     );
     if (rowCount === 0) {
-      return { ok: false, erro: 'Evento do painel nao encontrado para vincular.' };
+      return { ok: false, erro: 'Evento do painel não encontrado para vincular.' };
     }
     return { ok: true, erro: null };
   } catch (err) {
     console.error('[eventos] falha ao gravar vinculo:', err.message);
-    return { ok: false, erro: 'Nao foi possivel gravar o vinculo do evento.' };
+    return { ok: false, erro: 'Não foi possível gravar o vínculo do evento.' };
   }
 }
 

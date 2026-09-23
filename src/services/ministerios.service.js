@@ -21,8 +21,8 @@ const STATUS = {
   FALHA: 'SUPABASE_FAILED',
 };
 
-const ERRO_SEM_INTEGRACAO = 'Integracao com o aplicativo nao configurada neste servidor.';
-const ERRO_NAO_ENCONTRADO = 'Ministerio nao encontrado no aplicativo.';
+const ERRO_SEM_INTEGRACAO = 'Integração com o aplicativo não configurada neste servidor.';
+const ERRO_NAO_ENCONTRADO = 'Ministério não encontrado no aplicativo.';
 
 /**
  * Monta o registro do Supabase a partir da linha do Railway.
@@ -68,7 +68,7 @@ async function publicarMinisterioNoApp(ministerio) {
     return {
       uuid: null,
       status: STATUS.FALHA,
-      erro: 'Nao foi possivel publicar o ministerio no aplicativo.',
+      erro: 'Não foi possível publicar o ministério no aplicativo.',
     };
   }
 
@@ -103,7 +103,7 @@ async function atualizarMinisterioNoApp(uuidMinisterio, ministerio) {
     console.error('[ministerios] falha ao atualizar:', error.message);
     return {
       status: STATUS.FALHA,
-      erro: 'Nao foi possivel atualizar o ministerio no aplicativo.',
+      erro: 'Não foi possível atualizar o ministério no aplicativo.',
     };
   }
   if (!data) {
@@ -135,7 +135,7 @@ async function desativarMinisterioNoApp(uuidMinisterio) {
     console.error('[ministerios] falha ao desativar:', error.message);
     return {
       status: STATUS.FALHA,
-      erro: 'Nao foi possivel desativar o ministerio no aplicativo.',
+      erro: 'Não foi possível desativar o ministério no aplicativo.',
     };
   }
   if (!data) {

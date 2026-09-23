@@ -19,8 +19,8 @@ const CAMPOS =
   'id, member_id, type, method, amount_cents, currency, status, provider, ' +
   'provider_payment_id, message, expires_at, paid_at, created_at';
 
-const SEM_INTEGRACAO = 'Integracao com o aplicativo nao configurada neste servidor.';
-const NAO_ENCONTRADA = 'Doacao nao encontrada';
+const SEM_INTEGRACAO = 'Integração com o aplicativo não configurada neste servidor.';
+const NAO_ENCONTRADA = 'Doação não encontrada';
 
 /** Vocabulario do aplicativo traduzido para o do painel. */
 const TIPOS = { tithe: 'dizimo', offering: 'oferta', other: 'outro' };
@@ -78,7 +78,7 @@ async function buscarDoacoesDoApp() {
 
   if (error) {
     console.error('[doacoes] falha ao ler:', error.message);
-    return { doacoes: [], aviso: 'Nao foi possivel carregar as doacoes do aplicativo.' };
+    return { doacoes: [], aviso: 'Não foi possível carregar as doações do aplicativo.' };
   }
 
   return { doacoes: (data || []).map(traduzirDoacaoDoApp), aviso: null };
@@ -98,7 +98,7 @@ async function confirmarDoacaoDoApp(uuid) {
 
   if (error) {
     console.error('[doacoes] falha ao confirmar:', error.message);
-    return { status: 502, erro: 'Nao foi possivel confirmar a doacao.' };
+    return { status: 502, erro: 'Não foi possível confirmar a doação.' };
   }
   if (!data) return { status: 404, erro: NAO_ENCONTRADA };
 
@@ -120,7 +120,7 @@ async function cancelarDoacaoDoApp(uuid) {
 
   if (error) {
     console.error('[doacoes] falha ao cancelar:', error.message);
-    return { status: 502, erro: 'Nao foi possivel cancelar a doacao.' };
+    return { status: 502, erro: 'Não foi possível cancelar a doação.' };
   }
   if (!data) return { status: 404, erro: NAO_ENCONTRADA };
 

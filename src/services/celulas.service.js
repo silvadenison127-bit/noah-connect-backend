@@ -108,7 +108,7 @@ async function publicarCelulaNoApp(celula) {
     return {
       uuid: null,
       status: STATUS.NAO_CONFIGURADO,
-      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+      erro: 'Integração com o aplicativo não configurada neste servidor.',
     };
   }
 
@@ -125,7 +125,7 @@ async function publicarCelulaNoApp(celula) {
     return {
       uuid: null,
       status: STATUS.FALHA,
-      erro: 'Nao foi possivel publicar a celula no aplicativo.',
+      erro: 'Não foi possível publicar a célula no aplicativo.',
     };
   }
 
@@ -143,7 +143,7 @@ async function atualizarCelulaNoApp(uuidCelula, celula) {
   if (!supabaseAdmin) {
     return {
       status: STATUS.NAO_CONFIGURADO,
-      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+      erro: 'Integração com o aplicativo não configurada neste servidor.',
     };
   }
 
@@ -161,10 +161,10 @@ async function atualizarCelulaNoApp(uuidCelula, celula) {
 
   if (error) {
     console.error('[celulas] falha ao atualizar no aplicativo:', error.message);
-    return { status: STATUS.FALHA, erro: 'Nao foi possivel atualizar a celula no aplicativo.' };
+    return { status: STATUS.FALHA, erro: 'Não foi possível atualizar a célula no aplicativo.' };
   }
   if (!data) {
-    return { status: STATUS.NAO_ENCONTRADO, erro: 'Celula nao encontrada no aplicativo.' };
+    return { status: STATUS.NAO_ENCONTRADO, erro: 'Célula não encontrada no aplicativo.' };
   }
 
   return { status: STATUS.ATUALIZADO, erro: null };
@@ -181,7 +181,7 @@ async function desativarCelulaNoApp(uuidCelula) {
   if (!supabaseAdmin) {
     return {
       status: STATUS.NAO_CONFIGURADO,
-      erro: 'Integracao com o aplicativo nao configurada neste servidor.',
+      erro: 'Integração com o aplicativo não configurada neste servidor.',
     };
   }
 
@@ -194,10 +194,10 @@ async function desativarCelulaNoApp(uuidCelula) {
 
   if (error) {
     console.error('[celulas] falha ao desativar no aplicativo:', error.message);
-    return { status: STATUS.FALHA, erro: 'Nao foi possivel desativar a celula no aplicativo.' };
+    return { status: STATUS.FALHA, erro: 'Não foi possível desativar a célula no aplicativo.' };
   }
   if (!data) {
-    return { status: STATUS.NAO_ENCONTRADO, erro: 'Celula nao encontrada no aplicativo.' };
+    return { status: STATUS.NAO_ENCONTRADO, erro: 'Célula não encontrada no aplicativo.' };
   }
 
   return { status: STATUS.DESATIVADO, erro: null };

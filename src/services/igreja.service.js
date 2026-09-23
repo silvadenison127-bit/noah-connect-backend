@@ -28,7 +28,7 @@ const STATUS = {
 
 function exigirSupabase() {
   if (!supabaseAdmin) {
-    const erro = new Error('Supabase nao configurado no servidor.');
+    const erro = new Error('Supabase não configurado no servidor.');
     erro.codigo = STATUS.NAO_CONFIGURADO;
     throw erro;
   }
@@ -88,7 +88,7 @@ async function atualizarIgreja(corpo) {
 
   const atual = await obterIgreja();
   if (!atual) {
-    const erro = new Error('Nenhum registro de configuracao da igreja encontrado.');
+    const erro = new Error('Nenhum registro de configuração da igreja encontrado.');
     erro.codigo = STATUS.NAO_ENCONTRADO;
     throw erro;
   }

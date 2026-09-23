@@ -22,7 +22,7 @@ router.get('/seguranca', autenticar, somenteAdmin, async (req, res) => {
     res.json(seguranca);
   } catch (err) {
     console.error('[metrics] Erro na seguranca:', err);
-    res.status(500).json({ erro: 'Erro ao avaliar seguranca.' });
+    res.status(500).json({ erro: 'Erro ao avaliar segurança.' });
   }
 });
 
@@ -42,7 +42,7 @@ router.get('/retencao', autenticar, somenteAdmin, async (req, res) => {
     res.json(retencao);
   } catch (err) {
     console.error('[metrics] Erro na retencao:', err);
-    res.status(500).json({ erro: 'Erro ao calcular retencao.' });
+    res.status(500).json({ erro: 'Erro ao calcular retenção.' });
   }
 });
 
@@ -72,7 +72,7 @@ router.get('/igreja-saudavel', autenticar, somenteAdmin, async (req, res) => {
     res.json(saude);
   } catch (err) {
     console.error('[metrics] Erro no igreja-saudavel:', err);
-    res.status(500).json({ erro: 'Erro ao calcular igreja saudavel.' });
+    res.status(500).json({ erro: 'Erro ao calcular igreja saudável.' });
   }
 });
 
@@ -92,7 +92,7 @@ router.get('/frequencia-cultos', autenticar, somenteAdmin, async (req, res) => {
     res.json(frequencia);
   } catch (err) {
     console.error('[metrics] Erro no frequencia-cultos:', err);
-    res.status(500).json({ erro: 'Erro ao calcular frequencia de cultos.' });
+    res.status(500).json({ erro: 'Erro ao calcular frequência de cultos.' });
   }
 });
 
@@ -102,7 +102,7 @@ router.get('/distribuicao-idades', autenticar, somenteAdmin, async (req, res) =>
     res.json(distribuicao);
   } catch (err) {
     console.error('[metrics] Erro no distribuicao-idades:', err);
-    res.status(500).json({ erro: 'Erro ao calcular distribuicao de idades.' });
+    res.status(500).json({ erro: 'Erro ao calcular distribuição de idades.' });
   }
 });
 

@@ -17,7 +17,7 @@ const router = express.Router();
 router.post('/', autenticar, async (req, res) => {
   const { titulo, pedido, anonimo, nome_solicitante } = req.body;
   if (!pedido) {
-    return res.status(400).json({ erro: 'O texto do pedido e obrigatorio' });
+    return res.status(400).json({ erro: 'O texto do pedido é obrigatório' });
   }
   try {
     const resultado = await pool.query(
@@ -35,7 +35,7 @@ router.post('/', autenticar, async (req, res) => {
     res.status(201).json(resultado.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao enviar pedido de oracao' });
+    res.status(500).json({ erro: 'Erro ao enviar pedido de oração' });
   }
 });
 
@@ -83,7 +83,7 @@ router.get('/resumo', autenticar, somenteAdmin, async (req, res) => {
     res.json({ total, contagens });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Erro ao buscar resumo de pedidos de oracao' });
+    res.status(500).json({ erro: 'Erro ao buscar resumo de pedidos de oração' });
   }
 });
 
@@ -140,7 +140,7 @@ router.get('/nao-respondidos', autenticar, somenteAdmin, async (req, res) => {
 router.put('/:id/status', autenticar, somenteAdmin, async (req, res) => {
   const { status } = req.body;
   if (!['em_oracao', 'respondido', 'encerrado'].includes(status)) {
-    return res.status(400).json({ erro: 'Status invalido' });
+    return res.status(400).json({ erro: 'Status inválido' });
   }
 
   const alvo = interpretarId(req.params.id);
@@ -157,7 +157,7 @@ router.put('/:id/status', autenticar, somenteAdmin, async (req, res) => {
       `UPDATE pedidos_oracao SET status = $1 WHERE id = $2 RETURNING *`,
       [status, alvo.id]
     );
-    if (resultado.rows.length === 0) return res.status(404).json({ erro: 'Pedido nao encontrado' });
+    if (resultado.rows.length === 0) return res.status(404).json({ erro: 'Pedido não encontrado' });
     res.json(resultado.rows[0]);
   } catch (err) {
     console.error(err);
@@ -169,7 +169,7 @@ router.put('/:id/status', autenticar, somenteAdmin, async (req, res) => {
 router.put('/:id/responder', autenticar, somenteAdmin, async (req, res) => {
   const { resposta } = req.body;
   if (!resposta || !resposta.trim()) {
-    return res.status(400).json({ erro: 'A resposta nao pode ser vazia' });
+    return res.status(400).json({ erro: 'A resposta não pode ser vazia' });
   }
 
   const alvo = interpretarId(req.params.id);
@@ -195,7 +195,7 @@ router.put('/:id/responder', autenticar, somenteAdmin, async (req, res) => {
        RETURNING *`,
       [resposta, alvo.id]
     );
-    if (resultado.rows.length === 0) return res.status(404).json({ erro: 'Pedido nao encontrado' });
+    if (resultado.rows.length === 0) return res.status(404).json({ erro: 'Pedido não encontrado' });
     res.json(resultado.rows[0]);
   } catch (err) {
     console.error(err);
@@ -227,7 +227,7 @@ router.delete('/:id', autenticar, somenteAdmin, async (req, res) => {
       [alvo.id],
     );
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Pedido nao encontrado' });
+      return res.status(404).json({ erro: 'Pedido não encontrado' });
     }
     res.status(204).send();
   } catch (err) {

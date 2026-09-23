@@ -53,7 +53,7 @@ function extrairVideoId(entrada) {
 function exigirSupabase(res) {
   if (supabaseConfigurado) return true;
   res.status(503).json({
-    erro: 'Transmissoes indisponiveis: a integracao com o aplicativo nao esta configurada.',
+    erro: 'Transmissões indisponíveis: a integração com o aplicativo não está configurada.',
   });
   return false;
 }
@@ -66,7 +66,7 @@ function montarRegistro(corpo) {
   const { titulo, descricao, provider, link, thumbnail_url, agendado_para, destaque } = corpo;
 
   const tituloLimpo = String(titulo || '').trim();
-  if (!tituloLimpo) return { erro: 'O titulo e obrigatorio.' };
+  if (!tituloLimpo) return { erro: 'O título é obrigatório.' };
 
   const plataforma = String(provider || 'youtube').trim().toLowerCase();
   const linkLimpo = String(link || '').trim();
@@ -84,7 +84,7 @@ function montarRegistro(corpo) {
     const videoId = extrairVideoId(linkLimpo);
     if (!videoId) {
       return {
-        erro: 'Link do YouTube invalido. Cole o endereco completo do video ou da transmissao.',
+        erro: 'Link do YouTube inválido. Cole o endereço completo do vídeo ou da transmissão.',
       };
     }
     dados.video_id = videoId;
@@ -92,7 +92,7 @@ function montarRegistro(corpo) {
     // recorre ao `video_id` como alternativa.
     dados.stream_url = `https://www.youtube.com/watch?v=${videoId}`;
   } else {
-    if (!linkLimpo) return { erro: 'Informe o endereco da transmissao.' };
+    if (!linkLimpo) return { erro: 'Informe o endereço da transmissão.' };
     dados.video_id = null;
     dados.stream_url = linkLimpo;
   }
@@ -113,7 +113,7 @@ router.get('/', autenticar, somenteAdmin, async (req, res) => {
     res.json(data || []);
   } catch (err) {
     console.error('[ao-vivo] falha ao listar:', err);
-    res.status(500).json({ erro: 'Erro ao buscar transmissoes' });
+    res.status(500).json({ erro: 'Erro ao buscar transmissões' });
   }
 });
 
@@ -135,7 +135,7 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
     res.status(201).json(data);
   } catch (err) {
     console.error('[ao-vivo] falha ao criar:', err);
-    res.status(500).json({ erro: 'Erro ao criar transmissao' });
+    res.status(500).json({ erro: 'Erro ao criar transmissão' });
   }
 });
 
@@ -155,11 +155,11 @@ router.put('/:id', autenticar, somenteAdmin, async (req, res) => {
       .single();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ erro: 'Transmissao nao encontrada' });
+    if (!data) return res.status(404).json({ erro: 'Transmissão não encontrada' });
     res.json(data);
   } catch (err) {
     console.error('[ao-vivo] falha ao atualizar:', err);
-    res.status(500).json({ erro: 'Erro ao atualizar transmissao' });
+    res.status(500).json({ erro: 'Erro ao atualizar transmissão' });
   }
 });
 
@@ -192,11 +192,11 @@ router.post('/:id/iniciar', autenticar, somenteAdmin, async (req, res) => {
       .single();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ erro: 'Transmissao nao encontrada' });
+    if (!data) return res.status(404).json({ erro: 'Transmissão não encontrada' });
     res.json(data);
   } catch (err) {
     console.error('[ao-vivo] falha ao iniciar:', err);
-    res.status(500).json({ erro: 'Erro ao iniciar transmissao' });
+    res.status(500).json({ erro: 'Erro ao iniciar transmissão' });
   }
 });
 
@@ -215,11 +215,11 @@ router.post('/:id/encerrar', autenticar, somenteAdmin, async (req, res) => {
       .single();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ erro: 'Transmissao nao encontrada' });
+    if (!data) return res.status(404).json({ erro: 'Transmissão não encontrada' });
     res.json(data);
   } catch (err) {
     console.error('[ao-vivo] falha ao encerrar:', err);
-    res.status(500).json({ erro: 'Erro ao encerrar transmissao' });
+    res.status(500).json({ erro: 'Erro ao encerrar transmissão' });
   }
 });
 
@@ -243,11 +243,11 @@ router.post('/:id/reagendar', autenticar, somenteAdmin, async (req, res) => {
       .single();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ erro: 'Transmissao nao encontrada' });
+    if (!data) return res.status(404).json({ erro: 'Transmissão não encontrada' });
     res.json(data);
   } catch (err) {
     console.error('[ao-vivo] falha ao reagendar:', err);
-    res.status(500).json({ erro: 'Erro ao reagendar transmissao' });
+    res.status(500).json({ erro: 'Erro ao reagendar transmissão' });
   }
 });
 
@@ -261,7 +261,7 @@ router.delete('/:id', autenticar, somenteAdmin, async (req, res) => {
     res.status(204).send();
   } catch (err) {
     console.error('[ao-vivo] falha ao remover:', err);
-    res.status(500).json({ erro: 'Erro ao remover transmissao' });
+    res.status(500).json({ erro: 'Erro ao remover transmissão' });
   }
 });
 
