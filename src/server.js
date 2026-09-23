@@ -27,6 +27,7 @@ const aoVivoRoutes = require('./routes/aoVivo'); // NOVO - Transmissoes ao vivo 
 const chatRoutes = require('./routes/chat'); // NOVO - atendimento do chat pelo painel
 const igrejaRoutes = require('./routes/igreja');
 const mapaRoutes = require('./routes/mapa'); // NOVO - pontos do mapa da igreja
+const panicoRoutes = require('./routes/panico'); // Bloco 5 - alertas de panico
 
 const app = express();
 app.use(cors());
@@ -60,6 +61,7 @@ app.use('/api/ao-vivo', aoVivoRoutes); // NOVO - expoe /api/ao-vivo/*
 app.use('/api/chat', chatRoutes); // NOVO - expoe /api/chat/*
 app.use('/api/igreja', igrejaRoutes);
 app.use('/api/mapa', mapaRoutes); // NOVO - expoe /api/mapa/*
+app.use('/api/panico', panicoRoutes); // Bloco 5 - expoe /api/panico/*
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
