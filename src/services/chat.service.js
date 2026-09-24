@@ -15,6 +15,7 @@
  */
 
 const { supabaseAdmin } = require('../config/supabase');
+const { enviarParaMembros } = require('./push.service');
 
 const STATUS = {
   OK: 'SUPABASE_OK',
@@ -154,6 +155,26 @@ async function responder(roomId, texto) {
     .from('chat_rooms')
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', roomId);
+
+  // Bloco 7C: push para o membro dono da sala. Sem await: o painel nao espera
+  // a Expo, e qualquer falha fica so no log (a resposta ja esta gravada).
+  const previa = corpo.replace(/\s+/g, ' ');
+  supabaseAdmin
+    .from('chat_rooms')
+    .select('member_id')
+    .eq('id', roomId)
+    .maybeSingle()
+    .then(({ data: sala }) =>
+      sala?.member_id
+        ? enviarParaMembros([sala.member_id], {
+            title: 'Nova mensagem da igreja',
+            body: previa.length > 140 ? `${previa.slice(0, 137)}...` : previa,
+            data: { url: '/(member)/chat' },
+          })
+        : { enviados: 0 }
+    )
+    .then((r) => console.log('[chat] push enviado:', r.enviados, 'aparelho(s)'))
+    .catch((e) => console.error('[chat] push falhou:', e.message));
 
   return data;
 }
