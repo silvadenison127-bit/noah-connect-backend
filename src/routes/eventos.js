@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
+const { enviarParaTodos } = require('../services/push.service');
 const {
   STATUS,
   publicarEventoNoApp,
@@ -84,6 +85,17 @@ router.post('/', autenticar, somenteAdmin, async (req, res) => {
       },
     });
   }
+
+  // Bloco 7E: evento publicado no app -> push para todos (sem await: o painel
+  // nao espera a Expo). A data vem do texto digitado no painel (horario de
+  // Brasilia), sem conversao de fuso.
+  const m = String(data_inicio).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  const quando = m ? ` — ${m[3]}/${m[2]} às ${m[4]}:${m[5]}` : '';
+  enviarParaTodos({
+    title: '📅 Novo evento na agenda',
+    body: `${titulo}${quando}`,
+    data: { url: '/(member)/(tabs)/agenda', evento_id: evento.id },
+  }).then((r) => console.log('[eventos] push enviado:', r.enviados, 'aparelho(s)'));
 
   // Passo 3 - vinculo.
   const vinculo = await vincularEvento(evento.id, publicacao.uuid);
