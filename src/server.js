@@ -28,6 +28,7 @@ const chatRoutes = require('./routes/chat'); // NOVO - atendimento do chat pelo 
 const igrejaRoutes = require('./routes/igreja');
 const mapaRoutes = require('./routes/mapa'); // NOVO - pontos do mapa da igreja
 const panicoRoutes = require('./routes/panico'); // Bloco 5 - alertas de panico
+const visitantesRoutes = require('./routes/visitantes'); // Bloco 6 - visitantes por QR Code
 
 const app = express();
 app.use(cors());
@@ -62,6 +63,7 @@ app.use('/api/chat', chatRoutes); // NOVO - expoe /api/chat/*
 app.use('/api/igreja', igrejaRoutes);
 app.use('/api/mapa', mapaRoutes); // NOVO - expoe /api/mapa/*
 app.use('/api/panico', panicoRoutes); // Bloco 5 - expoe /api/panico/*
+app.use('/api/visitantes', visitantesRoutes); // Bloco 6 - expoe /api/visitantes/*
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
