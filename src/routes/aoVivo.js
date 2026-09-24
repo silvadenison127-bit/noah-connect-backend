@@ -12,6 +12,7 @@
 const express = require('express');
 const { supabaseAdmin, supabaseConfigurado } = require('../config/supabase');
 const { autenticar, somenteAdmin } = require('../middleware/auth');
+const { enviarParaTodos } = require('../services/push.service');
 
 const router = express.Router();
 
@@ -176,6 +177,11 @@ router.post('/:id/iniciar', autenticar, somenteAdmin, async (req, res) => {
   const agora = new Date().toISOString();
 
   try {
+    // Bloco 7D: so avisa os membros se ela ainda NAO estava no ar (evita push
+    // repetido quando o admin clica em "iniciar" duas vezes).
+    const antes = await supabaseAdmin.from(TABELA).select('status').eq('id', req.params.id).maybeSingle();
+    const jaEstavaNoAr = antes.data?.status === 'live';
+
     const encerramento = await supabaseAdmin
       .from(TABELA)
       .update({ status: 'ended', ended_at: agora, updated_at: agora })
@@ -193,6 +199,16 @@ router.post('/:id/iniciar', autenticar, somenteAdmin, async (req, res) => {
 
     if (error) throw error;
     if (!data) return res.status(404).json({ erro: 'Transmissão não encontrada' });
+
+    // Bloco 7D: push para todos (sem await: o painel nao espera a Expo).
+    if (!jaEstavaNoAr) {
+      enviarParaTodos({
+        title: '🔴 Estamos ao vivo!',
+        body: data.title || 'A transmissão da igreja começou.',
+        data: { url: '/(member)/(tabs)/ao-vivo', live_id: data.id },
+      }).then((r) => console.log('[ao-vivo] push enviado:', r.enviados, 'aparelho(s)'));
+    }
+
     res.json(data);
   } catch (err) {
     console.error('[ao-vivo] falha ao iniciar:', err);
