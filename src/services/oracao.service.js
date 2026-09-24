@@ -14,6 +14,7 @@
  */
 
 const { supabaseAdmin } = require('../config/supabase');
+const { enviarParaMembros } = require('./push.service');
 const pool = require('../config/db');
 
 /** Prefixo que identifica um pedido vindo do aplicativo. */
@@ -186,6 +187,13 @@ async function responderPedidoDoApp(uuidPedido, resposta, uuidPastor) {
     if (erroNotif) {
       console.error("[oracao] resposta gravada, mas a notificacao falhou:", erroNotif.message);
     }
+    // Bloco 7: push no celular do membro (nao bloqueia a resposta).
+    const push = await enviarParaMembros([data.member_id], {
+      title: "Seu pedido de oração foi respondido",
+      body: "O pastor respondeu ao seu pedido de oração.",
+      data: { url: "/(member)/meus-pedidos" },
+    });
+    console.log("[oracao] push enviado:", push.enviados, "aparelho(s)");
   } catch (e) {
     console.error("[oracao] resposta gravada, mas a notificacao falhou:", e.message);
   }
