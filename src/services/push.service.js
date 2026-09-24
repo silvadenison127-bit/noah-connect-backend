@@ -29,6 +29,27 @@ async function tokensAtivos(memberIds) {
   return [...new Set((data || []).map((t) => t.expo_push_token).filter(Boolean))];
 }
 
+/** Todos os aparelhos ativos (comunicado geral). Le em paginas de 1000. */
+async function tokensDeTodos() {
+  if (!supabaseAdmin) return [];
+  const tokens = [];
+  for (let inicio = 0; inicio < 20000; inicio += 1000) {
+    const { data, error } = await supabaseAdmin
+      .from('notification_tokens')
+      .select('expo_push_token')
+      .eq('is_active', true)
+      .order('id', { ascending: true })
+      .range(inicio, inicio + 999);
+    if (error) {
+      console.error('[push] falha ao ler aparelhos:', error.message);
+      break;
+    }
+    tokens.push(...(data || []).map((t) => t.expo_push_token).filter(Boolean));
+    if (!data || data.length < 1000) break;
+  }
+  return [...new Set(tokens)];
+}
+
 async function desativar(tokens) {
   if (!supabaseAdmin || tokens.length === 0) return;
   const { error } = await supabaseAdmin
@@ -42,9 +63,17 @@ async function desativar(tokens) {
  * Envia a mesma mensagem para os aparelhos ativos dos membros informados.
  * Devolve { enviados, desativados } (nunca lanca erro).
  */
-async function enviarParaMembros(memberIds, { title, body, data } = {}) {
+async function enviarParaMembros(memberIds, mensagem = {}) {
+  return enviarParaTokens(await tokensAtivos(memberIds), mensagem);
+}
+
+/** Envia para TODOS os aparelhos ativos (ex.: comunicado geral). */
+async function enviarParaTodos(mensagem = {}) {
+  return enviarParaTokens(await tokensDeTodos(), mensagem);
+}
+
+async function enviarParaTokens(tokens, { title, body, data } = {}) {
   try {
-    const tokens = await tokensAtivos(memberIds);
     if (tokens.length === 0) return { enviados: 0, desativados: 0 };
 
     let enviados = 0;
@@ -85,4 +114,4 @@ async function enviarParaMembros(memberIds, { title, body, data } = {}) {
   }
 }
 
-module.exports = { enviarParaMembros };
+module.exports = { enviarParaMembros, enviarParaTodos };

@@ -16,6 +16,7 @@
  */
 
 const { supabaseAdmin } = require('../config/supabase');
+const { enviarParaTodos } = require('./push.service');
 
 const STATUS = {
   OK: 'SUPABASE_CREATED',
@@ -61,6 +62,14 @@ async function publicarComunicado(comunicado) {
       console.error('[comunicados.service] insert falhou:', error.message);
       return { status: STATUS.FALHA, notificationId: null, erro: error.message };
     }
+    // Bloco 7B: push para todos os aparelhos. Sem await: o painel nao espera
+    // a Expo responder, e qualquer falha fica so no log.
+    const resumo = String(comunicado.mensagem || '').replace(/\s+/g, ' ').trim();
+    enviarParaTodos({
+      title: comunicado.titulo,
+      body: resumo.length > 140 ? `${resumo.slice(0, 137)}...` : resumo,
+      data: { url: '/(member)/noticias', comunicado_id: comunicado.id },
+    }).then((r) => console.log('[comunicados] push enviado:', r.enviados, 'aparelho(s)'));
     return { status: STATUS.OK, notificationId: data.id };
   } catch (err) {
     console.error('[comunicados.service] excecao no insert:', err.message);
