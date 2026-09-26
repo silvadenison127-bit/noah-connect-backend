@@ -22,6 +22,7 @@ const STATUS = {
   NAO_CONFIGURADO: 'SUPABASE_NOT_CONFIGURED',
   SEM_ATENDENTE: 'SUPABASE_NO_ADMIN_PROFILE',
   FALHA: 'SUPABASE_FAILED',
+  CONVERSA_NAO_ENCERRADA: 'CHAT_ROOM_NOT_CLOSED',
 };
 
 function exigirSupabase() {
@@ -68,6 +69,7 @@ async function listarConversas(status = 'open') {
     .from('chat_rooms')
     .select('id, member_id, subject, status, last_message_at, created_at')
     .eq('status', status)
+    .is('admin_hidden_at', null)
     .order('last_message_at', { ascending: false });
 
   if (error) propagar(error);
@@ -209,6 +211,7 @@ async function alterarStatus(roomId, status) {
     .from('chat_rooms')
     .update({ status })
     .eq('id', roomId)
+    .is('admin_hidden_at', null)
     .select('*')
     .single();
 
@@ -260,10 +263,38 @@ async function ocultarMensagens(roomId, ids) {
   return { ocultadas: (data || []).length };
 }
 
+/**
+ * Oculta a conversa inteira apenas no painel. O app do membro nao usa esta
+ * coluna. So vale para conversa encerrada: get_or_create_chat_room reaproveita
+ * a sala aberta do membro, e ocultar uma sala aberta esconderia as proximas
+ * mensagens dele. Um unico update com todas as condicoes evita corrida com
+ * quem reabrir a conversa ao mesmo tempo.
+ */
+async function ocultarConversa(roomId) {
+  exigirSupabase();
+
+  const { data, error } = await supabaseAdmin
+    .from('chat_rooms')
+    .update({ admin_hidden_at: new Date().toISOString() })
+    .eq('id', roomId)
+    .eq('status', 'closed')
+    .is('admin_hidden_at', null)
+    .select('id');
+
+  if (error) propagar(error);
+  if (!data || !data.length) {
+    const erro = new Error('Conversa não encontrada ou ainda aberta. Encerre a conversa antes de excluir.');
+    erro.codigo = STATUS.CONVERSA_NAO_ENCERRADA;
+    throw erro;
+  }
+  return { ocultada: true };
+}
+
 module.exports = {
   STATUS,
   contarNaoLidas,
   ocultarMensagens,
+  ocultarConversa,
   listarConversas,
   listarMensagens,
   responder,

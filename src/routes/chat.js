@@ -9,7 +9,7 @@ function responderErro(res, err, mensagemPadrao) {
   if (err.codigo === chatService.STATUS.NAO_CONFIGURADO) {
     return res.status(503).json({ erro: 'Chat indisponível: Supabase não configurado.' });
   }
-  if (err.codigo === chatService.STATUS.SEM_ATENDENTE) {
+  if (err.codigo === chatService.STATUS.SEM_ATENDENTE || err.codigo === chatService.STATUS.CONVERSA_NAO_ENCERRADA) {
     return res.status(409).json({ erro: err.message });
   }
   return res.status(500).json({ erro: mensagemPadrao });
@@ -61,6 +61,18 @@ router.post('/:roomId/mensagens/ocultar', autenticar, somenteAdmin, async (req, 
     res.json(await chatService.ocultarMensagens(req.params.roomId, lista));
   } catch (err) {
     responderErro(res, err, 'Erro ao excluir mensagens');
+  }
+});
+
+// Oculta a conversa inteira so no painel. Apenas conversas encerradas.
+router.post('/:roomId/ocultar', autenticar, somenteAdmin, async (req, res) => {
+  if (!UUID.test(req.params.roomId)) {
+    return res.status(400).json({ erro: 'Conversa invalida.' });
+  }
+  try {
+    res.json(await chatService.ocultarConversa(req.params.roomId));
+  } catch (err) {
+    responderErro(res, err, 'Erro ao excluir conversa');
   }
 });
 
