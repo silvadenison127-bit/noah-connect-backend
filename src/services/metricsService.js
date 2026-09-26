@@ -1,5 +1,6 @@
 ﻿const pool = require('../config/db');
 const securityService = require('./securityService');
+const { supabaseAdmin } = require('../config/supabase');
 
 function kpi(valor, estado, origem) {
   return {
@@ -84,8 +85,20 @@ const metricsService = {
     return contar(`SELECT COUNT(*) AS total FROM pedidos_oracao`, [], 'pedidos_oracao');
   },
 
-  noticias() {
-    return contar(`SELECT COUNT(*) AS total FROM noticias`, [], 'noticias');
+  // Noticias vivem no Supabase (church_news) desde a migracao do Bloco 11.
+  // Mesmo formato de kpi das outras metricas; falha vira estado 'erro'.
+  async noticias() {
+    if (!supabaseAdmin) return kpi(null, 'erro', 'noticias');
+    try {
+      const { count, error } = await supabaseAdmin
+        .from('church_news')
+        .select('id', { count: 'exact', head: true });
+      if (error) throw error;
+      return kpi(count || 0, 'real', 'noticias');
+    } catch (err) {
+      console.error('[metricsService] Erro ao contar em "noticias":', err.message);
+      return kpi(null, 'erro', 'noticias');
+    }
   },
 
   comunicados() {
