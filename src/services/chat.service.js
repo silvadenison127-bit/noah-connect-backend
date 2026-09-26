@@ -105,7 +105,7 @@ async function listarConversas(status = 'open') {
   }));
 }
 
-/** Mensagens de uma conversa, da mais antiga para a mais recente. */
+/** As `limite` mensagens mais recentes de uma conversa, da mais antiga para a mais recente. */
 async function listarMensagens(roomId, limite = 200) {
   exigirSupabase();
 
@@ -114,11 +114,12 @@ async function listarMensagens(roomId, limite = 200) {
     .select('id, room_id, sender_profile_id, sender_role, body, read_at, created_at')
     .eq('room_id', roomId)
     .is('admin_hidden_at', null)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(limite);
 
   if (error) propagar(error);
-  return data || [];
+  // A busca vem da mais recente para a mais antiga; inverte para a ordem da tela.
+  return (data || []).reverse();
 }
 
 /**
